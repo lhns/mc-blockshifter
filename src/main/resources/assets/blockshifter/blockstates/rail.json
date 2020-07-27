@@ -1,7 +1,64 @@
 {
   "variants": {
-    "": {
-      "model": "blockshifter:block/rail"
+    "facing=up,rotated=false": {
+      "model": "blockshifter:block/rail",
+      "x": 0,
+      "y": 90
+    },
+    "facing=down,rotated=false": {
+      "model": "blockshifter:block/rail",
+      "x": 180,
+      "y": 90
+    },
+    "facing=north,rotated=false": {
+      "model": "blockshifter:block/rail",
+      "x": 90,
+      "y": 0
+    },
+    "facing=east,rotated=false": {
+      "model": "blockshifter:block/rail",
+      "x": 90,
+      "y": 90
+    },
+    "facing=south,rotated=false": {
+      "model": "blockshifter:block/rail",
+      "x": 90,
+      "y": 180
+    },
+    "facing=west,rotated=false": {
+      "model": "blockshifter:block/rail",
+      "x": 90,
+      "y": 270
+    },
+    "facing=up,rotated=true": {
+      "model": "blockshifter:block/rail_rotated",
+      "x": 0,
+      "y": 90
+    },
+    "facing=down,rotated=true": {
+      "model": "blockshifter:block/rail_rotated",
+      "x": 180,
+      "y": 90
+    },
+    "facing=north,rotated=true": {
+      "model": "blockshifter:block/rail_rotated",
+      "x": 90,
+      "y": 0
+    },
+    "facing=east,rotated=true": {
+      "model": "blockshifter:block/rail_rotated",
+      "x": 90,
+      "y": 90
+    },
+    "facing=south,rotated=true": {
+      "model": "blockshifter:block/rail_rotated",
+      "x": 90,
+      "y": 180
+    },
+    "facing=west,rotated=true": {
+      "model": "blockshifter:block/rail_rotated",
+      "x": 90,
+      "y": 270
     }
   }
 }

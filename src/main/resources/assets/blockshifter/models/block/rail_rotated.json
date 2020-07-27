@@ -1,5 +1,5 @@
 {
-  "parent": "minecraft:block/cube_bottom_top",
+  "parent": "blockshifter:block/cube_bottom_top_rotated_y",
   "textures": {
     "top": "blockshifter:block/rail",
     "bottom": "blockshifter:block/rail_back",
