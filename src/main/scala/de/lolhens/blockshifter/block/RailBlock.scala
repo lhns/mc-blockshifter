@@ -17,10 +17,10 @@ class RailBlock() extends Block(RailBlock.settings) {
 
     def isAir(pos: BlockPos): Boolean = world.getBlockState(pos).isAir
 
-    val railStartPos: BlockPos = follow(pos, moveDirection.getOpposite).takeWhile(isRail).toList.last
-    val thisRailLength: Int = follow(railStartPos, moveDirection).takeWhile(isRail).size
-    println("first length: " + thisRailLength)
-    follow(railStartPos, facing)
+    val railStart: BlockPos = follow(pos, moveDirection.getOpposite).takeWhile(isRail).toList.last
+    val thisRailLength: Int = follow(railStart, moveDirection).takeWhile(isRail).size
+
+    follow(railStart, facing)
       .take(RailBlock.maxRailDistance)
       .zipWithIndex
       .drop(1)
@@ -28,44 +28,55 @@ class RailBlock() extends Block(RailBlock.settings) {
       .filter(_._2 > 0)
       .foreach {
         case (otherRailPos, railDistance) =>
-          println("distance: " + railDistance)
           val otherRailLength: Int = follow(otherRailPos, moveDirection).takeWhile(isRail).size
           val railLength: Int = Math.min(thisRailLength, otherRailLength)
 
           def betweenRails(posOnRail: BlockPos): Iterator[BlockPos] =
             follow(posOnRail.offset(facing), facing).take(railDistance - 1)
 
-          val emptyRows: Int = {
-            val railEndPos: BlockPos = railStartPos.offset(moveDirection, railLength - 1)
-            follow(railEndPos, moveDirection.getOpposite)
+          val emptyRowsStart: Int =
+            follow(railStart, moveDirection)
               .take(railLength)
               .takeWhile(betweenRails(_).forall(isAir))
               .size
-          }
 
-          println("empty rows: " + emptyRows)
+          if (emptyRowsStart < railLength - 1) {
+            val railEnd: BlockPos = railStart.offset(moveDirection, railLength - 1)
 
-          val overhang: Int = Math.max(0, {
-            follow(railStartPos, moveDirection.getOpposite)
-              .take(emptyRows + 1)
-              .takeWhile(!betweenRails(_).forall(isAir))
-              .size
-          } - 1)
+            val emptyRowsEnd: Int =
+              follow(railEnd, moveDirection.getOpposite)
+                .take(railLength)
+                .takeWhile(betweenRails(_).forall(isAir))
+                .size
 
-          println("overhang: " + overhang)
+            val overhangStart: Int =
+              if (emptyRowsStart > 0) -emptyRowsStart
+              else
+                follow(railStart.offset(moveDirection.getOpposite), moveDirection.getOpposite)
+                  .take(emptyRowsEnd)
+                  .takeWhile(!betweenRails(_).forall(isAir))
+                  .size
 
-          val rowsToMove = railLength - 1 - Math.max(0, emptyRows - 1)
-          val rowsToMoveOffset = Math.max(0, rowsToMove - 1)
+            val overhangEnd: Int =
+              if (emptyRowsEnd > 0) -emptyRowsEnd
+              else
+                follow(railEnd.offset(moveDirection), moveDirection)
+                  .take(emptyRowsStart)
+                  .takeWhile(!betweenRails(_).forall(isAir))
+                  .size
 
-          val firstRowToMove: BlockPos = railStartPos.offset(moveDirection, rowsToMoveOffset)
+            val shiftStart: BlockPos = railStart.offset(moveDirection, -overhangStart)
+            val shiftLength: Int = railLength + overhangStart + overhangEnd
+            val shiftEnd: BlockPos = shiftStart.offset(moveDirection, shiftLength - 1)
 
-          if (betweenRails(firstRowToMove.offset(moveDirection)).forall(isAir)) {
-            follow(firstRowToMove, moveDirection.getOpposite)
-              .take(rowsToMove + overhang)
-              .foreach(betweenRails(_).foreach { pos =>
-                world.setBlockState(pos.offset(moveDirection), world.getBlockState(pos))
-                world.removeBlock(pos, false)
-              })
+            if (betweenRails(shiftEnd.offset(moveDirection)).forall(isAir)) {
+              follow(shiftEnd, moveDirection.getOpposite)
+                .take(shiftLength)
+                .foreach(betweenRails(_).foreach { pos =>
+                  world.setBlockState(pos.offset(moveDirection), world.getBlockState(pos))
+                  world.removeBlock(pos, false)
+                })
+            }
           }
       }
 
