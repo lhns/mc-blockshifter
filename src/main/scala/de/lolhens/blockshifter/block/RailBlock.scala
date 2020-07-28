@@ -75,11 +75,12 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
     val isPowered = world.isReceivingRedstonePower(pos);
     if (isPowered != state.get(RailBlock.POWERED))
       newState.tap { state =>
+        newState = state.`with`(RailBlock.POWERED, java.lang.Boolean.valueOf(isPowered))
+        world.setBlockState(pos, newState)
+
         if (isPowered) {
           shiftBlocks(world, pos, state)
         }
-        newState = state.`with`(RailBlock.POWERED, java.lang.Boolean.valueOf(isPowered))
-        world.setBlockState(pos, newState)
       }
   }
 
@@ -110,7 +111,7 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
     shiftBlocks(world, pos, facing, direction)
   }
 
-  private def shiftBlocks(world: World, pos: BlockPos, facing: Direction, movementDirection: Direction): Boolean = synchronized {
+  private def shiftBlocks(world: World, pos: BlockPos, facing: Direction, movementDirection: Direction): Boolean = {
     def follow(start: BlockPos, direction: Direction): Iterator[BlockPos] =
       Iterator.iterate(start)(_.offset(direction))
 
@@ -162,6 +163,7 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
           val alreadyPowered =
             (follow(railStart, movementDirection).take(railLength) ++
               follow(otherRailPos, movementDirection).take(railLength))
+              .filterNot(_ == pos)
               .exists(world.getBlockState(_).get(RailBlock.POWERED))
 
           if (!alreadyPowered) {
