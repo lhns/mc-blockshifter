@@ -11,6 +11,8 @@ import net.minecraft.util.math.{BlockPos, Direction}
 import net.minecraft.util.{ActionResult, BlockMirror, BlockRotation, Hand}
 import net.minecraft.world.World
 
+import scala.util.chaining._
+
 class RailBlock() extends FacingBlock(RailBlock.settings) {
   def getState(facing: Direction, rotated: Boolean): BlockState =
     getStateManager.getDefaultState.`with`(FacingBlock.FACING, facing).`with`(RailBlock.ROTATED, java.lang.Boolean.valueOf(rotated))
@@ -26,35 +28,39 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
   override def mirror(state: BlockState, mirror: BlockMirror): BlockState =
     state.rotate(mirror.getRotation(state.get(FacingBlock.FACING)))
 
-  private def movementAxis(world: World, pos: BlockPos, facing: Direction): Direction.Axis = {
+  private val preferredAxes: Array[Direction.Axis] =
+    Array(Direction.Axis.Y, Direction.Axis.X, Direction.Axis.Z)
+
+  private def movementAxisFromSurrounding(world: World, pos: BlockPos, facing: Direction): Direction.Axis = {
     val facingAxis = facing.getAxis
-    Direction.values().iterator
+    Direction.values
+      .iterator
       .filterNot(_.getAxis == facingAxis)
       .find { direction =>
         val state = world.getBlockState(pos.offset(direction))
         state.isOf(this) && state.get(FacingBlock.FACING) == facing
       }
       .map(_.getAxis)
-      .getOrElse(List(Direction.Axis.Y, Direction.Axis.X).find(_ != facingAxis).get)
+      .getOrElse(preferredAxes.iterator.filterNot(_ == facingAxis).next())
   }
 
-  /*def axisFromBlockState(state: BlockState): Direction.Axis = {
+  def movementDirectionFromBlockState(state: BlockState): Direction = {
     val facing = state.get(FacingBlock.FACING)
     val rotated = state.get(RailBlock.ROTATED)
-    facing.getAxis match {
-      case Direction.Axis.X => axis != Direction.Axis.Y
-      case Direction.Axis.Y => axis != Direction.Axis.X
-      case Direction.Axis.Z => axis != Direction.Axis.Y
-    }
-  }*/
+    movementDirection(facing, rotated)
+  }
+
+  def movementDirection(facing: Direction, rotated: Boolean): Direction = {
+    val facingAxis = facing.getAxis
+    val opposite = Direction.values.iterator.filter(_.getAxis == facingAxis).indexOf(facing) > 0
+    val movementAxis = preferredAxes.iterator.filterNot(_ == facing.getAxis).drop(if (rotated) 1 else 0).next()
+    Direction.values.iterator.filter(_.getAxis == movementAxis).drop(if (opposite) 1 else 0).next()
+  }
 
   private def isRotated(world: World, pos: BlockPos, facing: Direction): Boolean = {
-    val axis = movementAxis(world, pos, facing)
-    facing.getAxis match {
-      case Direction.Axis.X => axis != Direction.Axis.Y
-      case Direction.Axis.Y => axis != Direction.Axis.X
-      case Direction.Axis.Z => axis != Direction.Axis.Y
-    }
+    val facingAxis = facing.getAxis
+    val axis = movementAxisFromSurrounding(world, pos, facing)
+    preferredAxes.iterator.filterNot(_ == facingAxis).indexOf(axis) > 0
   }
 
   override def getPlacementState(ctx: ItemPlacementContext): BlockState = {
@@ -71,7 +77,15 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
       world.setBlockState(pos, state.`with`(RailBlock.ROTATED, java.lang.Boolean.valueOf(rotated)))
     }
 
-  private def shiftBlocks(world: World, pos: BlockPos, facing: Direction, moveDirection: Direction): Boolean = {
+  private def shiftBlocks(world: World, pos: BlockPos, reverse: Boolean): Boolean = {
+    val state = world.getBlockState(pos)
+    val facing = state.get(FacingBlock.FACING)
+    val rotated = state.get(RailBlock.ROTATED)
+    val direction = movementDirection(facing, rotated).pipe(e => if (reverse) e.getOpposite else e)
+    shiftBlocks(world, pos, facing, direction)
+  }
+
+  private def shiftBlocks(world: World, pos: BlockPos, facing: Direction, movementDirection: Direction): Boolean = {
     def follow(start: BlockPos, direction: Direction): Iterator[BlockPos] =
       Iterator.iterate(start)(_.offset(direction))
 
@@ -80,47 +94,62 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
       state.isOf(this) && {
         val railFacing = state.get(FacingBlock.FACING)
         railFacing == (if (other) facing.getOpposite else facing) &&
-          movementAxis(world, pos, railFacing) == moveDirection.getAxis
+          movementDirectionFromBlockState(state).getAxis == movementDirection.getAxis
       }
     }
 
+    def isThisRail(pos: BlockPos): Boolean = isRail(pos, other = false)
+
+    def isOtherRail(pos: BlockPos): Boolean = isRail(pos, other = true)
+
     def isAir(pos: BlockPos) = world.getBlockState(pos).isAir
 
-    val railStart = follow(pos, moveDirection.getOpposite).takeWhile(isRail(_, other = false)).toList.last
-    val thisRailLength = follow(railStart, moveDirection).takeWhile(isRail(_, other = false)).size
+    val thisRailStart = follow(pos, movementDirection.getOpposite).takeWhile(isThisRail).toList.last
+    val thisRailLength = follow(thisRailStart, movementDirection).takeWhile(isThisRail).size
 
-    println("rail length: " + thisRailLength)
-    println("facing: " + facing)
-    println("move direction: " + moveDirection)
+    //println("rail length: " + thisRailLength)
+    //println("facing: " + facing)
+    //println("move direction: " + movementDirection)
 
-    follow(railStart, facing)
-      .take(RailBlock.maxRailDistance)
+    follow(thisRailStart, movementDirection)
+      .take(thisRailLength)
       .zipWithIndex
-      .drop(1)
-      .find(e => isRail(e._1, other = true))
-      .filter(_._2 > 0)
+      .flatMap {
+        case (railStart, railStartOffset) =>
+          follow(railStart, facing)
+            .take(RailBlock.maxRailDistance)
+            .zipWithIndex
+            .drop(1)
+            .find(e => isOtherRail(e._1))
+            .filter(_._2 > 0)
+            .map {
+              case (otherRailPos, railDistance) =>
+                (railStart, railStartOffset, otherRailPos, railDistance)
+            }
+      }
+      .nextOption()
       .foreach {
-        case (otherRailPos, railDistance) =>
-          val otherRailLength = follow(otherRailPos, moveDirection).takeWhile(isRail(_, other = true)).size
-          val railLength = Math.min(thisRailLength, otherRailLength)
+        case (railStart, railStartOffset, otherRailPos, railDistance) =>
+          val otherRailLength = follow(otherRailPos, movementDirection).takeWhile(isOtherRail).size
+          val railLength = Math.min(thisRailLength - railStartOffset, otherRailLength)
 
-          println("distance: " + railDistance)
-          println("real length: " + railLength)
+          //println("distance: " + railDistance)
+          //println("real length: " + railLength)
 
           def betweenRails(posOnRail: BlockPos) =
             follow(posOnRail.offset(facing), facing).take(railDistance - 1)
 
           val emptyRowsStart =
-            follow(railStart, moveDirection)
+            follow(railStart, movementDirection)
               .take(railLength)
               .takeWhile(betweenRails(_).forall(isAir))
               .size
 
           if (emptyRowsStart < railLength - 1) {
-            val railEnd: BlockPos = railStart.offset(moveDirection, railLength - 1)
+            val railEnd: BlockPos = railStart.offset(movementDirection, railLength - 1)
 
             val emptyRowsEnd =
-              follow(railEnd, moveDirection.getOpposite)
+              follow(railEnd, movementDirection.getOpposite)
                 .take(railLength)
                 .takeWhile(betweenRails(_).forall(isAir))
                 .size
@@ -128,7 +157,7 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
             val overhangStart =
               if (emptyRowsStart > 0) -emptyRowsStart
               else
-                follow(railStart.offset(moveDirection.getOpposite), moveDirection.getOpposite)
+                follow(railStart.offset(movementDirection.getOpposite), movementDirection.getOpposite)
                   .take(emptyRowsEnd)
                   .takeWhile(!betweenRails(_).forall(isAir))
                   .size
@@ -136,20 +165,20 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
             val overhangEnd =
               if (emptyRowsEnd > 0) -emptyRowsEnd
               else
-                follow(railEnd.offset(moveDirection), moveDirection)
+                follow(railEnd.offset(movementDirection), movementDirection)
                   .take(emptyRowsStart)
                   .takeWhile(!betweenRails(_).forall(isAir))
                   .size
 
-            val shiftStart: BlockPos = railStart.offset(moveDirection, -overhangStart)
+            val shiftStart: BlockPos = railStart.offset(movementDirection, -overhangStart)
             val shiftLength: Int = railLength + overhangStart + overhangEnd
-            val shiftEnd: BlockPos = shiftStart.offset(moveDirection, shiftLength - 1)
+            val shiftEnd: BlockPos = shiftStart.offset(movementDirection, shiftLength - 1)
 
-            if (betweenRails(shiftEnd.offset(moveDirection)).forall(isAir)) {
-              follow(shiftEnd, moveDirection.getOpposite)
+            if (betweenRails(shiftEnd.offset(movementDirection)).forall(isAir)) {
+              follow(shiftEnd, movementDirection.getOpposite)
                 .take(shiftLength)
                 .foreach(betweenRails(_).foreach { pos =>
-                  world.setBlockState(pos.offset(moveDirection), world.getBlockState(pos))
+                  world.setBlockState(pos.offset(movementDirection), world.getBlockState(pos))
                   world.removeBlock(pos, false)
                 })
 
@@ -159,18 +188,6 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
       }
 
     false
-  }
-
-  private def shiftBlocks(world: World, pos: BlockPos, reverse: Boolean): Boolean = {
-    val state = world.getBlockState(pos)
-    val facing = state.get(FacingBlock.FACING)
-    val axis = movementAxis(world, pos, facing)
-    val direction = {
-      val directions = Direction.values().iterator.filter(_.getAxis == axis)
-      if (reverse) directions.next()
-      directions.next()
-    }
-    shiftBlocks(world, pos, facing, direction)
   }
 
   override def onUse(state: BlockState, world: World, pos: BlockPos, player: PlayerEntity, hand: Hand, hit: BlockHitResult): ActionResult = {
