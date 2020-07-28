@@ -68,7 +68,7 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
         val newRotated = isRotatedFromSurrounding(world, pos, facing)
         if (newRotated != rotated) {
           newState = state.`with`(RailBlock.ROTATED, java.lang.Boolean.valueOf(newRotated))
-          world.setBlockState(pos, newState)
+          world.setBlockState(pos, newState, 2)
         }
       }
 
@@ -76,10 +76,10 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
     if (isPowered != state.get(RailBlock.POWERED))
       newState.tap { state =>
         newState = state.`with`(RailBlock.POWERED, java.lang.Boolean.valueOf(isPowered))
-        world.setBlockState(pos, newState)
+        world.setBlockState(pos, newState, 2)
 
         if (isPowered) {
-          shiftBlocks(world, pos, state)
+          shiftBlocks(world, pos, newState)
         }
       }
   }
@@ -131,7 +131,7 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
     val thisRailStart = follow(pos, movementDirection.getOpposite).takeWhile(isThisRail).toList.last
     val thisRailLength = follow(thisRailStart, movementDirection).takeWhile(isThisRail).size
 
-    //println("rail length: " + thisRailLength)
+    //println("this rail length: " + thisRailLength)
     //println("facing: " + facing)
     //println("move direction: " + movementDirection)
 
@@ -158,7 +158,7 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
           val railLength = Math.min(thisRailLength - railStartOffset, otherRailLength)
 
           //println("distance: " + railDistance)
-          //println("real length: " + railLength)
+          //println("length: " + railLength)
 
           val alreadyPowered =
             (follow(railStart, movementDirection).take(railLength) ++
@@ -210,23 +210,29 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
                     .takeWhile(!isRowImmovable(_))
                     .size
 
-              println("overhang start: " + overhangStart)
-              println("overhang end: " + overhangEnd)
+              //println("overhang start: " + overhangStart)
+              //println("overhang end: " + overhangEnd)
 
               val shiftStart: BlockPos = railStart.offset(movementDirection, -overhangStart)
               val shiftLength: Int = railLength + overhangStart + overhangEnd
               val shiftEnd: BlockPos = shiftStart.offset(movementDirection, shiftLength - 1)
 
               if (betweenRails(shiftEnd.offset(movementDirection)).forall(world.getBlockState(_).isAir)) {
-                println("shift start: " + shiftStart)
-                println("shift end: " + shiftStart)
+                //println("shift start: " + shiftStart)
+                //println("shift end: " + shiftStart)
 
-                follow(shiftEnd, movementDirection.getOpposite)
+                val stateList: Seq[(BlockPos, BlockState)] = follow(shiftEnd, movementDirection.getOpposite)
                   .take(shiftLength)
-                  .foreach(betweenRails(_).foreach { pos =>
-                    world.setBlockState(pos.offset(movementDirection), world.getBlockState(pos))
+                  .flatMap {
+                    betweenRails(_).map(pos => pos -> world.getBlockState(pos))
+                  }
+                  .toSeq
+
+                stateList.foreach {
+                  case (pos, state) =>
+                    world.setBlockState(pos.offset(movementDirection), state)
                     world.removeBlock(pos, true)
-                  })
+                }
 
                 return true
               }
