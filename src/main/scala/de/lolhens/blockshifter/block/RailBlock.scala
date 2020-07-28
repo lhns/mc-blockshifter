@@ -248,7 +248,6 @@ object RailBlock {
   private val settings =
     FabricBlockSettings
       .of(Material.STONE)
-      .requiresTool()
       .hardness(2.0F)
 
   val ROTATED: BooleanProperty = BooleanProperty.of("rotated")
