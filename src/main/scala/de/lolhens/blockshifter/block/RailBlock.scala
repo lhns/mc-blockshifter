@@ -110,7 +110,7 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
     shiftBlocks(world, pos, facing, direction)
   }
 
-  private def shiftBlocks(world: World, pos: BlockPos, facing: Direction, movementDirection: Direction): Boolean = {
+  private def shiftBlocks(world: World, pos: BlockPos, facing: Direction, movementDirection: Direction): Boolean = synchronized {
     def follow(start: BlockPos, direction: Direction): Iterator[BlockPos] =
       Iterator.iterate(start)(_.offset(direction))
 
@@ -126,8 +126,6 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
     def isThisRail(pos: BlockPos): Boolean = isRail(pos, other = false)
 
     def isOtherRail(pos: BlockPos): Boolean = isRail(pos, other = true)
-
-    def isAir(pos: BlockPos) = world.getBlockState(pos).isAir
 
     val thisRailStart = follow(pos, movementDirection.getOpposite).takeWhile(isThisRail).toList.last
     val thisRailLength = follow(thisRailStart, movementDirection).takeWhile(isThisRail).size
@@ -167,13 +165,22 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
               .exists(world.getBlockState(_).get(RailBlock.POWERED))
 
           if (!alreadyPowered) {
-            def betweenRails(posOnRail: BlockPos) =
+            def betweenRails(posOnRail: BlockPos): Iterator[BlockPos] =
               follow(posOnRail.offset(facing), facing).take(railDistance - 1)
+
+            def isRowImmovable(posOnRail: BlockPos): Boolean =
+              betweenRails(posOnRail).forall { pos =>
+                val state = world.getBlockState(pos)
+                if (!PistonBlock.isMovable(state, world, pos, movementDirection, false, movementDirection))
+                  return true
+
+                state.isAir
+              }
 
             val emptyRowsStart =
               follow(railStart, movementDirection)
                 .take(railLength)
-                .takeWhile(betweenRails(_).forall(isAir))
+                .takeWhile(isRowImmovable)
                 .size
 
             if (emptyRowsStart < railLength - 1) {
@@ -182,7 +189,7 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
               val emptyRowsEnd =
                 follow(railEnd, movementDirection.getOpposite)
                   .take(railLength)
-                  .takeWhile(betweenRails(_).forall(isAir))
+                  .takeWhile(isRowImmovable)
                   .size
 
               val overhangStart =
@@ -190,7 +197,7 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
                 else
                   follow(railStart.offset(movementDirection.getOpposite), movementDirection.getOpposite)
                     .take(emptyRowsEnd)
-                    .takeWhile(!betweenRails(_).forall(isAir))
+                    .takeWhile(!isRowImmovable(_))
                     .size
 
               val overhangEnd =
@@ -198,7 +205,7 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
                 else
                   follow(railEnd.offset(movementDirection), movementDirection)
                     .take(emptyRowsStart)
-                    .takeWhile(!betweenRails(_).forall(isAir))
+                    .takeWhile(!isRowImmovable(_))
                     .size
 
               println("overhang start: " + overhangStart)
@@ -208,7 +215,7 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
               val shiftLength: Int = railLength + overhangStart + overhangEnd
               val shiftEnd: BlockPos = shiftStart.offset(movementDirection, shiftLength - 1)
 
-              if (betweenRails(shiftEnd.offset(movementDirection)).forall(isAir)) {
+              if (betweenRails(shiftEnd.offset(movementDirection)).forall(world.getBlockState(_).isAir)) {
                 println("shift start: " + shiftStart)
                 println("shift end: " + shiftStart)
 
