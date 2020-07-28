@@ -12,6 +12,10 @@ Castle gates and retractable bridges are nice examples where this could be usefu
 - Controllable by redstone
 - Rails are placeable in any direction
 
+## Recipes
+#### Blockshifter Rail
+![Blockshifter Rail](https://raw.githubusercontent.com/LolHens/mc-blockshifter/master/screenshots/recipe_rail.png)
+
 ## Screenshots
 ![](https://raw.githubusercontent.com/LolHens/mc-blockshifter/master/screenshots/2020-07-28_22.36.24.png)
 
