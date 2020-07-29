@@ -136,8 +136,6 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
         .exists(world.getBlockState(_).get(RailBlock.POWERED))
 
     if (!neighborAlreadyPowered) {
-      println("update")
-
       val thisRailStart = follow(pos, movementDirection.getOpposite).takeWhile(isThisRail).toList.last
       val thisRailLength = follow(thisRailStart, movementDirection).takeWhile(isThisRail).size
 
