@@ -1,6 +1,6 @@
-package de.lolhens.blockshifter
+package de.lolhens.minecraft.blockshifter
 
-import de.lolhens.blockshifter.block.RailBlock
+import de.lolhens.minecraft.blockshifter.block.RailBlock
 import net.fabricmc.api.ModInitializer
 import net.fabricmc.loader.api.FabricLoader
 import net.fabricmc.loader.api.metadata.ModMetadata
