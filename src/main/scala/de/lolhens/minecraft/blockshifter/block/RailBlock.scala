@@ -2,6 +2,7 @@ package de.lolhens.minecraft.blockshifter.block
 
 import net.fabricmc.fabric.api.`object`.builder.v1.block.FabricBlockSettings
 import net.minecraft.block._
+import net.minecraft.block.piston.PistonBehavior
 import net.minecraft.item.ItemPlacementContext
 import net.minecraft.state.StateManager
 import net.minecraft.state.property.BooleanProperty
@@ -83,13 +84,6 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
         }
       }
   }
-
-  /*override def onUse(state: BlockState, world: World, pos: BlockPos, player: PlayerEntity, hand: Hand, hit: BlockHitResult): ActionResult = {
-    if (shiftBlocks(world, pos, state))
-      ActionResult.SUCCESS
-    else
-      ActionResult.PASS
-  }*/
 
   def movementDirectionFromBlockState(state: BlockState): Direction = {
     val facing = state.get(FacingBlock.FACING)
@@ -178,19 +172,40 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
               def betweenRails(posOnRail: BlockPos): Iterator[BlockPos] =
                 follow(posOnRail.offset(facing), facing).take(railDistance - 1)
 
-              def isRowImmovable(posOnRail: BlockPos): Boolean =
-                betweenRails(posOnRail).forall { pos =>
+              def isEmpty(state: BlockState): Boolean =
+                state.isAir || (state.getPistonBehavior match {
+                  case PistonBehavior.IGNORE | PistonBehavior.DESTROY => true
+                  case _ => false
+                })
+
+              def clearFirstRow(posOnRail: BlockPos): Boolean = {
+                val row = betweenRails(posOnRail).map(pos => (pos, world.getBlockState(pos))).toSeq
+                val rowEmpty = row.forall {
+                  case (_, state) =>
+                    isEmpty(state)
+                }
+                if (rowEmpty) row.foreach {
+                  case (pos, state) => if (!state.isAir && state.getPistonBehavior == PistonBehavior.DESTROY) {
+                    val blockEntity = if (state.getBlock.hasBlockEntity) world.getBlockEntity(pos) else null
+                    Block.dropStacks(state, world.getWorld, pos, blockEntity);
+                  }
+                }
+                rowEmpty
+              }
+
+              def isRowMovable(posOnRail: BlockPos): Boolean =
+                !betweenRails(posOnRail).forall { pos =>
                   val state = world.getBlockState(pos)
                   if (!PistonBlock.isMovable(state, world, pos, movementDirection, false, movementDirection))
-                    return true
+                    return false
 
-                  state.isAir
+                  isEmpty(state)
                 }
 
               val emptyRowsStart =
                 follow(railStart, movementDirection)
                   .take(railLength)
-                  .takeWhile(isRowImmovable)
+                  .takeWhile(!isRowMovable(_))
                   .size
 
               if (emptyRowsStart < railLength - 1) {
@@ -199,7 +214,7 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
                 val emptyRowsEnd =
                   follow(railEnd, movementDirection.getOpposite)
                     .take(railLength)
-                    .takeWhile(isRowImmovable)
+                    .takeWhile(!isRowMovable(_))
                     .size
 
                 val overhangStart =
@@ -207,7 +222,7 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
                   else
                     follow(railStart.offset(movementDirection.getOpposite), movementDirection.getOpposite)
                       .take(emptyRowsEnd)
-                      .takeWhile(!isRowImmovable(_))
+                      .takeWhile(isRowMovable)
                       .size
 
                 val overhangEnd =
@@ -215,7 +230,7 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
                   else
                     follow(railEnd.offset(movementDirection), movementDirection)
                       .take(emptyRowsStart)
-                      .takeWhile(!isRowImmovable(_))
+                      .takeWhile(isRowMovable)
                       .size
 
                 //println("overhang start: " + overhangStart)
@@ -225,7 +240,7 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
                 val shiftLength: Int = railLength + overhangStart + overhangEnd
                 val shiftEnd: BlockPos = shiftStart.offset(movementDirection, shiftLength - 1)
 
-                if (betweenRails(shiftEnd.offset(movementDirection)).forall(world.getBlockState(_).isAir)) {
+                if (clearFirstRow(shiftEnd.offset(movementDirection))) {
                   //println("shift start: " + shiftStart)
                   //println("shift end: " + shiftStart)
 
