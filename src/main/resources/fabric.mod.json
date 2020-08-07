@@ -22,6 +22,9 @@
       }
     ]
   },
+  "mixins": [
+    "blockshifter.mixins.json"
+  ],
   "depends": {
     "fabric-language-scala": "*",
     "fabricloader": ">=0.7.4",
