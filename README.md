@@ -11,6 +11,8 @@ Castle gates and retractable bridges are nice examples where this could be usefu
 - Rails which let you shift block placed between them
 - Controllable by redstone
 - Rails are placeable in any direction
+- Moves player and other entities (allows you to build elevators)
+- Movable tile entities if enabled with [Carpet](https://www.curseforge.com/minecraft/mc-mods/carpet)
 
 ## Usage
 Blockshifter Rails act similar to drawers. They can move blocks that stand over at the end of the rails. How much overhang is taken into account depends on how many empty blocks are on the other side. When you are experimenting with this mod you will probably pull out some blocks from the ground under the rails once or twice. You can prevent this by using obsidian.
