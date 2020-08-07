@@ -1,7 +1,9 @@
 package de.lolhens.minecraft.blockshifter.block
 
+import de.lolhens.minecraft.blockshifter.util.WorldUtil
 import net.fabricmc.fabric.api.`object`.builder.v1.block.FabricBlockSettings
 import net.minecraft.block._
+import net.minecraft.block.entity.BlockEntity
 import net.minecraft.block.piston.PistonBehavior
 import net.minecraft.item.ItemPlacementContext
 import net.minecraft.state.StateManager
@@ -105,6 +107,8 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
     shiftBlocks(world, pos, facing, direction)
   }
 
+  private val air = Blocks.AIR.getDefaultState
+
   private def shiftBlocks(world: World, pos: BlockPos, facing: Direction, movementDirection: Direction): Boolean = {
     def follow(start: BlockPos, direction: Direction): Iterator[BlockPos] =
       Iterator.iterate(start)(_.offset(direction))
@@ -196,7 +200,7 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
               def isRowMovable(posOnRail: BlockPos): Boolean =
                 !betweenRails(posOnRail).forall { pos =>
                   val state = world.getBlockState(pos)
-                  if (!PistonBlock.isMovable(state, world, pos, movementDirection, false, movementDirection))
+                  if (!PistonBlock.isMovable(state, world, pos, movementDirection, true, movementDirection))
                     return false
 
                   isEmpty(state)
@@ -244,17 +248,34 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
                   //println("shift start: " + shiftStart)
                   //println("shift end: " + shiftStart)
 
-                  val stateList: Seq[(BlockPos, BlockState)] = follow(shiftEnd, movementDirection.getOpposite)
-                    .take(shiftLength)
-                    .flatMap {
-                      betweenRails(_).map(pos => pos -> world.getBlockState(pos))
-                    }
-                    .toSeq
+                  val stateList: Seq[(BlockPos, BlockPos, BlockState, Option[BlockEntity])] =
+                    follow(shiftEnd, movementDirection.getOpposite)
+                      .take(shiftLength)
+                      .flatMap(betweenRails(_).map { pos =>
+                        val offset = pos.offset(movementDirection)
+                        val state: BlockState = world.getBlockState(pos)
+                        val entityOption: Option[BlockEntity] = Option(world.getBlockEntity(pos))
+                        (pos, offset, state, entityOption)
+                      })
+                      .toSeq
 
                   stateList.foreach {
-                    case (pos, state) =>
-                      world.setBlockState(pos.offset(movementDirection), state)
-                      world.removeBlock(pos, true)
+                    case (pos, _, _, _) =>
+                      world.removeBlockEntity(pos)
+                      world.setBlockState(pos, air, 2 | 16 | 32 | 64)
+                  }
+
+                  stateList.foreach {
+                    case (_, offset, state, entityOption) =>
+                      entityOption.foreach(_.cancelRemoval())
+                      WorldUtil.setBlockStateWithBlockEntity(world, offset, state, entityOption.orNull, 1 | 2 | 64)
+                  }
+
+                  betweenRails(shiftStart).foreach { pos =>
+                    val flags = (1 | 2 | 64) & -34
+                    val depth = 512
+                    air.updateNeighbors(world, pos, flags, depth)
+                    air.prepare(world, pos, flags, depth)
                   }
 
                   return true
@@ -279,4 +300,3 @@ object RailBlock {
 
   val maxRailDistance: Int = 64
 }
-
