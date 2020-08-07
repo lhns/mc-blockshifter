@@ -5,13 +5,15 @@ import net.fabricmc.fabric.api.`object`.builder.v1.block.FabricBlockSettings
 import net.minecraft.block._
 import net.minecraft.block.entity.BlockEntity
 import net.minecraft.block.piston.PistonBehavior
+import net.minecraft.entity.Entity
 import net.minecraft.item.ItemPlacementContext
 import net.minecraft.state.StateManager
 import net.minecraft.state.property.BooleanProperty
-import net.minecraft.util.math.{BlockPos, Direction}
+import net.minecraft.util.math.{BlockPos, Box, Direction, Vec3d}
 import net.minecraft.util.{BlockMirror, BlockRotation}
 import net.minecraft.world.World
 
+import scala.jdk.CollectionConverters._
 import scala.util.chaining._
 
 class RailBlock() extends FacingBlock(RailBlock.settings) {
@@ -276,6 +278,26 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
                     val depth = 512
                     air.updateNeighbors(world, pos, flags, depth)
                     air.prepare(world, pos, flags, depth)
+                  }
+
+                  val box: Box = {
+                    val a: BlockPos = shiftStart.offset(facing)
+                    val b: BlockPos = shiftEnd.offset(facing, railDistance - 1)
+
+                    val minX = Math.min(a.getX, b.getX)
+                    val minY = Math.min(a.getY, b.getY)
+                    val minZ = Math.min(a.getZ, b.getZ)
+                    val maxX = Math.max(a.getX, b.getX) + 1
+                    val maxY = Math.max(a.getY, b.getY) + 1.01
+                    val maxZ = Math.max(a.getZ, b.getZ) + 1
+
+                    new Box(minX, minY, minZ, maxX, maxY, maxZ)
+                  }
+
+                  world.getNonSpectatingEntities(classOf[Entity], box).iterator.asScala.foreach { entity =>
+                    val vec: Vec3d = Vec3d.of(movementDirection.getVector)
+                    val newPos = entity.getPos.add(vec)
+                    entity.teleport(newPos.getX, newPos.getY, newPos.getZ)
                   }
 
                   return true
