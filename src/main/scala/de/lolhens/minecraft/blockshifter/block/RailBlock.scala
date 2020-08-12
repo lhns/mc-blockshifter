@@ -184,12 +184,24 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
                   case _ => false
                 })
 
+              def isMovable(pos: BlockPos, state: BlockState): Boolean =
+                PistonBlock.isMovable(state, world, pos, movementDirection, true, movementDirection)
+
+              def areAllEmpty(iterator: IterableOnce[BlockState]): Boolean =
+                iterator.iterator.forall(isEmpty)
+
+              def areAllMovable(iterator: IterableOnce[(BlockPos, BlockState)]): Boolean =
+                iterator.iterator.forall(e => isMovable(e._1, e._2))
+
+              def isRow(posOnRail: BlockPos, f: Seq[(BlockPos, BlockState)] => Boolean): Boolean =
+                f(betweenRails(posOnRail).map(pos => (pos, world.getBlockState(pos))).toSeq)
+
+              def isRowEmptyOrImmovable(posOnRail: BlockPos): Boolean =
+                isRow(posOnRail, blocks => areAllEmpty(blocks.iterator.map(_._2)) || !areAllMovable(blocks))
+
               def clearFirstRow(posOnRail: BlockPos): Boolean = {
                 val row = betweenRails(posOnRail).map(pos => (pos, world.getBlockState(pos))).toSeq
-                val rowEmpty = row.forall {
-                  case (_, state) =>
-                    isEmpty(state)
-                }
+                val rowEmpty = areAllEmpty(row.iterator.map(_._2))
                 if (rowEmpty) row.foreach {
                   case (pos, state) => if (!state.isAir && state.getPistonBehavior == PistonBehavior.DESTROY) {
                     val blockEntity = if (state.getBlock.hasBlockEntity) world.getBlockEntity(pos) else null
@@ -199,19 +211,10 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
                 rowEmpty
               }
 
-              def isRowMovable(posOnRail: BlockPos): Boolean =
-                betweenRails(posOnRail).foldLeft(false) { (nonEmptyRow, pos) =>
-                  val state = world.getBlockState(pos)
-                  if (!PistonBlock.isMovable(state, world, pos, movementDirection, true, movementDirection))
-                    return false
-
-                  nonEmptyRow || !isEmpty(state)
-                }
-
               val emptyRowsStart =
                 follow(railStart, movementDirection)
                   .take(railLength)
-                  .takeWhile(!isRowMovable(_))
+                  .takeWhile(isRowEmptyOrImmovable)
                   .size
 
               if (emptyRowsStart < railLength - 1) {
@@ -220,7 +223,7 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
                 val emptyRowsEnd =
                   follow(railEnd, movementDirection.getOpposite)
                     .take(railLength)
-                    .takeWhile(!isRowMovable(_))
+                    .takeWhile(isRowEmptyOrImmovable)
                     .size
 
                 val overhangStart =
@@ -228,7 +231,7 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
                   else
                     follow(railStart.offset(movementDirection.getOpposite), movementDirection.getOpposite)
                       .take(emptyRowsEnd)
-                      .takeWhile(isRowMovable)
+                      .takeWhile(!isRowEmptyOrImmovable(_))
                       .size
 
                 val overhangEnd =
@@ -236,7 +239,7 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
                   else
                     follow(railEnd.offset(movementDirection), movementDirection)
                       .take(emptyRowsStart)
-                      .takeWhile(isRowMovable)
+                      .takeWhile(!isRowEmptyOrImmovable(_))
                       .size
 
                 println("start: " + overhangStart + " end: " + overhangEnd)
@@ -252,57 +255,64 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
                   //println("shift start: " + shiftStart)
                   //println("shift end: " + shiftStart)
 
-                  val stateList: Seq[(BlockPos, BlockPos, BlockState, Option[BlockEntity])] =
+                  val allRowsMovable =
                     follow(shiftEnd, movementDirection.getOpposite)
                       .take(shiftLength)
-                      .flatMap(betweenRails(_).map { pos =>
-                        val offset = pos.offset(movementDirection)
-                        val state: BlockState = world.getBlockState(pos)
-                        val entityOption: Option[BlockEntity] = Option(world.getBlockEntity(pos))
-                        (pos, offset, state, entityOption)
-                      })
-                      .toSeq
+                      .forall(isRow(_, areAllMovable))
 
-                  stateList.foreach {
-                    case (pos, _, _, _) =>
-                      world.removeBlockEntity(pos)
-                      world.setBlockState(pos, air, 2 | 16 | 32 | 64)
+                  if (allRowsMovable) {
+                    val stateList: Seq[(BlockPos, BlockPos, BlockState, Option[BlockEntity])] =
+                      follow(shiftEnd, movementDirection.getOpposite)
+                        .take(shiftLength)
+                        .flatMap(betweenRails(_).map { pos =>
+                          val offset = pos.offset(movementDirection)
+                          val state: BlockState = world.getBlockState(pos)
+                          val entityOption: Option[BlockEntity] = Option(world.getBlockEntity(pos))
+                          (pos, offset, state, entityOption)
+                        })
+                        .toSeq
+
+                    stateList.foreach {
+                      case (pos, _, _, _) =>
+                        world.removeBlockEntity(pos)
+                        world.setBlockState(pos, air, 2 | 16 | 32 | 64)
+                    }
+
+                    stateList.foreach {
+                      case (_, offset, state, entityOption) =>
+                        entityOption.foreach(_.cancelRemoval())
+                        WorldUtil.setBlockStateWithBlockEntity(world, offset, state, entityOption.orNull, 1 | 2 | 64)
+                    }
+
+                    betweenRails(shiftStart).foreach { pos =>
+                      val flags = (1 | 2 | 64) & -34
+                      val depth = 512
+                      air.updateNeighbors(world, pos, flags, depth)
+                      air.prepare(world, pos, flags, depth)
+                    }
+
+                    val box: Box = {
+                      val a: BlockPos = shiftStart.offset(facing)
+                      val b: BlockPos = shiftEnd.offset(facing, railDistance - 1)
+
+                      val minX = Math.min(a.getX, b.getX)
+                      val minY = Math.min(a.getY, b.getY)
+                      val minZ = Math.min(a.getZ, b.getZ)
+                      val maxX = Math.max(a.getX, b.getX) + 1
+                      val maxY = Math.max(a.getY, b.getY) + 1.01
+                      val maxZ = Math.max(a.getZ, b.getZ) + 1
+
+                      new Box(minX, minY, minZ, maxX, maxY, maxZ)
+                    }
+
+                    world.getNonSpectatingEntities(classOf[Entity], box).iterator.asScala.foreach { entity =>
+                      val vec: Vec3d = Vec3d.of(movementDirection.getVector)
+                      val newPos = entity.getPos.add(vec)
+                      entity.teleport(newPos.getX, newPos.getY, newPos.getZ)
+                    }
+
+                    return true
                   }
-
-                  stateList.foreach {
-                    case (_, offset, state, entityOption) =>
-                      entityOption.foreach(_.cancelRemoval())
-                      WorldUtil.setBlockStateWithBlockEntity(world, offset, state, entityOption.orNull, 1 | 2 | 64)
-                  }
-
-                  betweenRails(shiftStart).foreach { pos =>
-                    val flags = (1 | 2 | 64) & -34
-                    val depth = 512
-                    air.updateNeighbors(world, pos, flags, depth)
-                    air.prepare(world, pos, flags, depth)
-                  }
-
-                  val box: Box = {
-                    val a: BlockPos = shiftStart.offset(facing)
-                    val b: BlockPos = shiftEnd.offset(facing, railDistance - 1)
-
-                    val minX = Math.min(a.getX, b.getX)
-                    val minY = Math.min(a.getY, b.getY)
-                    val minZ = Math.min(a.getZ, b.getZ)
-                    val maxX = Math.max(a.getX, b.getX) + 1
-                    val maxY = Math.max(a.getY, b.getY) + 1.01
-                    val maxZ = Math.max(a.getZ, b.getZ) + 1
-
-                    new Box(minX, minY, minZ, maxX, maxY, maxZ)
-                  }
-
-                  world.getNonSpectatingEntities(classOf[Entity], box).iterator.asScala.foreach { entity =>
-                    val vec: Vec3d = Vec3d.of(movementDirection.getVector)
-                    val newPos = entity.getPos.add(vec)
-                    entity.teleport(newPos.getX, newPos.getY, newPos.getZ)
-                  }
-
-                  return true
                 }
               }
             }
