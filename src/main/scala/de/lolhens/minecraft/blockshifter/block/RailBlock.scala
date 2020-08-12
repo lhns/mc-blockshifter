@@ -200,12 +200,12 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
               }
 
               def isRowMovable(posOnRail: BlockPos): Boolean =
-                !betweenRails(posOnRail).forall { pos =>
+                betweenRails(posOnRail).foldLeft(false) { (nonEmptyRow, pos) =>
                   val state = world.getBlockState(pos)
                   if (!PistonBlock.isMovable(state, world, pos, movementDirection, true, movementDirection))
                     return false
 
-                  isEmpty(state)
+                  nonEmptyRow || !isEmpty(state)
                 }
 
               val emptyRowsStart =
@@ -238,6 +238,8 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
                       .take(emptyRowsStart)
                       .takeWhile(isRowMovable)
                       .size
+
+                println("start: " + overhangStart + " end: " + overhangEnd)
 
                 //println("overhang start: " + overhangStart)
                 //println("overhang end: " + overhangEnd)
