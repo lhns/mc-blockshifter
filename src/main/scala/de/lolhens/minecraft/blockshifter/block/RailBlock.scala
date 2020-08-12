@@ -193,7 +193,7 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
                 if (rowEmpty) row.foreach {
                   case (pos, state) => if (!state.isAir && state.getPistonBehavior == PistonBehavior.DESTROY) {
                     val blockEntity = if (state.getBlock.hasBlockEntity) world.getBlockEntity(pos) else null
-                    Block.dropStacks(state, world.getWorld, pos, blockEntity);
+                    Block.dropStacks(state, world, pos, blockEntity);
                   }
                 }
                 rowEmpty
