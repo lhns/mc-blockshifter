@@ -1,12 +1,13 @@
 package de.lolhens.minecraft.blockshifter.block
 
-import de.lolhens.minecraft.blockshifter.util.WorldUtil
+import de.lolhens.minecraft.blockshifter.util.{EntityMover, WorldUtil}
 import net.fabricmc.fabric.api.`object`.builder.v1.block.FabricBlockSettings
 import net.minecraft.block._
 import net.minecraft.block.entity.BlockEntity
 import net.minecraft.block.piston.PistonBehavior
 import net.minecraft.entity.Entity
 import net.minecraft.item.ItemPlacementContext
+import net.minecraft.server.world.ServerWorld
 import net.minecraft.state.StateManager
 import net.minecraft.state.property.BooleanProperty
 import net.minecraft.util.math.{BlockPos, Box, Direction, Vec3d}
@@ -84,7 +85,12 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
         world.setBlockState(pos, newState, 2)
 
         if (isPowered) {
-          shiftBlocks(world, pos, newState)
+          world match {
+            case serverWorld: ServerWorld =>
+              shiftBlocks(serverWorld, pos, newState)
+
+            case _ =>
+          }
         }
       }
   }
@@ -102,7 +108,7 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
     Direction.values.iterator.filter(_.getAxis == movementAxis).drop(if (opposite) 1 else 0).next()
   }
 
-  private def shiftBlocks(world: World, pos: BlockPos, state: BlockState, reverse: Boolean = false): Boolean = {
+  private def shiftBlocks(world: ServerWorld, pos: BlockPos, state: BlockState, reverse: Boolean = false): Boolean = {
     val facing = state.get(FacingBlock.FACING)
     val rotated = state.get(RailBlock.ROTATED)
     val direction = movementDirection(facing, rotated).pipe(e => if (reverse) e.getOpposite else e)
@@ -111,7 +117,7 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
 
   private val air = Blocks.AIR.getDefaultState
 
-  private def shiftBlocks(world: World, pos: BlockPos, facing: Direction, movementDirection: Direction): Boolean = {
+  private def shiftBlocks(world: ServerWorld, pos: BlockPos, facing: Direction, movementDirection: Direction): Boolean = {
     def follow(start: BlockPos, direction: Direction): Iterator[BlockPos] =
       Iterator.iterate(start)(_.offset(direction))
 
@@ -242,8 +248,6 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
                       .takeWhile(!isRowEmptyOrImmovable(_))
                       .size
 
-                println("start: " + overhangStart + " end: " + overhangEnd)
-
                 //println("overhang start: " + overhangStart)
                 //println("overhang end: " + overhangEnd)
 
@@ -305,10 +309,11 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
                       new Box(minX, minY, minZ, maxX, maxY, maxZ)
                     }
 
+                    val movementVector: Vec3d = Vec3d.of(movementDirection.getVector)
                     world.getNonSpectatingEntities(classOf[Entity], box).iterator.asScala.foreach { entity =>
-                      val vec: Vec3d = Vec3d.of(movementDirection.getVector)
-                      val newPos = entity.getPos.add(vec)
-                      entity.teleport(newPos.getX, newPos.getY, newPos.getZ)
+                      /*val newPos = entity.getPos.add(movementVector)
+                      entity.teleport(newPos.getX, newPos.getY, newPos.getZ)*/
+                      EntityMover(world).queueMove(entity, movementVector)
                     }
 
                     return true

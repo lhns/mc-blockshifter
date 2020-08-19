@@ -1,7 +1,9 @@
 package de.lolhens.minecraft.blockshifter
 
 import de.lolhens.minecraft.blockshifter.block.RailBlock
+import de.lolhens.minecraft.blockshifter.util.EntityMover
 import net.fabricmc.api.ModInitializer
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents
 import net.fabricmc.loader.api.FabricLoader
 import net.fabricmc.loader.api.metadata.ModMetadata
 import net.minecraft.item.{BlockItem, Item, ItemGroup}
@@ -22,5 +24,9 @@ object BlockshifterMod extends ModInitializer {
   override def onInitialize(): Unit = {
     Registry.register(Registry.BLOCK, railBlockId, railBlock)
     Registry.register(Registry.ITEM, railBlockId, new BlockItem(railBlock, new Item.Settings().group(ItemGroup.BUILDING_BLOCKS)))
+
+    ServerTickEvents.START_WORLD_TICK.register { world =>
+      EntityMover(world).moveAll()
+    }
   }
 }
