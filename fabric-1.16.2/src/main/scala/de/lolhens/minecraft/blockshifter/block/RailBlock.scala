@@ -78,7 +78,7 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
         }
       }
 
-    val isPowered = world.isReceivingRedstonePower(pos);
+    val isPowered = world.isReceivingRedstonePower(pos)
     if (isPowered != state.get(RailBlock.POWERED))
       newState.tap { state =>
         newState = state.`with`(RailBlock.POWERED, java.lang.Boolean.valueOf(isPowered))
@@ -211,7 +211,7 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
                 if (rowEmpty) row.foreach {
                   case (pos, state) => if (!state.isAir && state.getPistonBehavior == PistonBehavior.DESTROY) {
                     val blockEntity = if (state.getBlock.hasBlockEntity) world.getBlockEntity(pos) else null
-                    Block.dropStacks(state, world, pos, blockEntity);
+                    Block.dropStacks(state, world, pos, blockEntity)
                   }
                 }
                 rowEmpty

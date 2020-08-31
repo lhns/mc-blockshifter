@@ -1,0 +1,12 @@
+{
+  "parent": "blockshifter:block/cube_rotated_y",
+  "textures": {
+    "particle": "#side",
+    "down": "#bottom",
+    "up": "#top",
+    "north": "#side",
+    "east": "#side",
+    "south": "#side",
+    "west": "#side"
+  }
+}
