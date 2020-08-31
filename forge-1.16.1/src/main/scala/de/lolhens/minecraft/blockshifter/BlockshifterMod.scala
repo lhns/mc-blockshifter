@@ -1,6 +1,5 @@
 package de.lolhens.minecraft.blockshifter
 
-import de.lolhens.minecraft.blockshifter.BlockshifterMod.RAIL_BLOCK_ID
 import de.lolhens.minecraft.blockshifter.block.RailBlock
 import de.lolhens.minecraft.blockshifter.util.EntityMover
 import net.minecraft.block.Block
@@ -22,18 +21,18 @@ object BlockshifterMod {
   private val logger = LogManager.getLogger
 
   val RAIL_BLOCK_ID = new ResourceLocation(container.getModId, "rail")
-  val RAIL_BLOCK: Block = new RailBlock().setRegistryName(RAIL_BLOCK_ID)
+  val RAIL_BLOCK: Block = new RailBlock()
 
   FMLJavaModLoadingContext.get.getModEventBus.addListener { _: FMLCommonSetupEvent =>
     // setup
   }
 
-  FMLJavaModLoadingContext.get.getModEventBus.addGenericListener(classOf[Block], { blockRegistryEvent: RegistryEvent.Register[Block] =>
-    blockRegistryEvent.getRegistry.register(RAIL_BLOCK)
+  FMLJavaModLoadingContext.get.getModEventBus.addGenericListener(classOf[Block], { event: RegistryEvent.Register[Block] =>
+    event.getRegistry.register(RAIL_BLOCK.setRegistryName(RAIL_BLOCK_ID))
   })
 
-  FMLJavaModLoadingContext.get.getModEventBus.addGenericListener(classOf[Item], { itemRegistryEvent: RegistryEvent.Register[Item] =>
-    itemRegistryEvent.getRegistry.register(new BlockItem(RAIL_BLOCK, new Item.Properties().group(ItemGroup.BUILDING_BLOCKS)).setRegistryName(RAIL_BLOCK_ID))
+  FMLJavaModLoadingContext.get.getModEventBus.addGenericListener(classOf[Item], { event: RegistryEvent.Register[Item] =>
+    event.getRegistry.register(new BlockItem(RAIL_BLOCK, new Item.Properties().group(ItemGroup.BUILDING_BLOCKS)).setRegistryName(RAIL_BLOCK_ID))
   })
 
   MinecraftForge.EVENT_BUS.addListener { event: TickEvent.WorldTickEvent =>
