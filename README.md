@@ -2,7 +2,7 @@
 [![Release Notes](https://img.shields.io/github/release/LolHens/mc-blockshifter.svg?maxAge=3600)](https://github.com/LolHens/mc-blockshifter/releases/latest)
 [![Apache License 2.0](https://img.shields.io/github/license/LolHens/mc-blockshifter.svg?maxAge=3600)](https://www.apache.org/licenses/LICENSE-2.0)
 
-[![](https://raw.githubusercontent.com/LolHens/mc-blockshifter/master/src/main/resources/assets/blockshifter/icon.png)](https://www.curseforge.com/minecraft/mc-mods/blockshifter)
+[![](https://raw.githubusercontent.com/LolHens/mc-blockshifter/master/fabric-1.16.1/src/main/resources/assets/blockshifter/icon.png)](https://www.curseforge.com/minecraft/mc-mods/blockshifter)
 
 This mod adds rails on which you can shift multiple blocks back and forth.
 Castle gates and retractable bridges are nice examples where this could be useful.
@@ -12,7 +12,7 @@ Castle gates and retractable bridges are nice examples where this could be usefu
 - Controllable by redstone
 - Rails are placeable in any direction
 - Moves player and other entities (allows you to build elevators)
-- Movable tile entities if enabled with [Carpet](https://www.curseforge.com/minecraft/mc-mods/carpet)
+- Movable tile entities if enabled with [Carpet](https://www.curseforge.com/minecraft/mc-mods/carpet) (fabric version only)
 
 ## Usage
 Blockshifter Rails act similar to drawers. They can move blocks that stand over at the end of the rails. How much overhang is taken into account depends on how many empty blocks are on the other side. When you are experimenting with this mod you will probably pull out some blocks from the ground under the rails once or twice. You can prevent this by using obsidian.
