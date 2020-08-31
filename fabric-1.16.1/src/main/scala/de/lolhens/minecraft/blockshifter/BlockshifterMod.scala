@@ -18,12 +18,12 @@ object BlockshifterMod extends ModInitializer {
       .iterator().asScala.find(this eq _.getEntrypoint).get.getProvider.getMetadata
   }
 
-  val railBlockId = new Identifier(metadata.getId, "rail")
-  val railBlock: RailBlock = new RailBlock()
+  val RAIL_BLOCK_ID = new Identifier(metadata.getId, "rail")
+  val RAIL_BLOCK: RailBlock = new RailBlock()
 
   override def onInitialize(): Unit = {
-    Registry.register(Registry.BLOCK, railBlockId, railBlock)
-    Registry.register(Registry.ITEM, railBlockId, new BlockItem(railBlock, new Item.Settings().group(ItemGroup.BUILDING_BLOCKS)))
+    Registry.register(Registry.BLOCK, RAIL_BLOCK_ID, RAIL_BLOCK)
+    Registry.register(Registry.ITEM, RAIL_BLOCK_ID, new BlockItem(RAIL_BLOCK, new Item.Settings().group(ItemGroup.BUILDING_BLOCKS)))
 
     ServerTickEvents.START_WORLD_TICK.register { world =>
       EntityMover(world).moveAll()

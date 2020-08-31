@@ -1,39 +1,38 @@
 package de.lolhens.minecraft.blockshifter.block
 
 import de.lolhens.minecraft.blockshifter.util.{EntityMover, WorldUtil}
-import net.fabricmc.fabric.api.`object`.builder.v1.block.FabricBlockSettings
 import net.minecraft.block._
-import net.minecraft.block.entity.BlockEntity
-import net.minecraft.block.piston.PistonBehavior
+import net.minecraft.block.material.{Material, PushReaction}
 import net.minecraft.entity.Entity
-import net.minecraft.item.ItemPlacementContext
-import net.minecraft.server.world.ServerWorld
-import net.minecraft.state.StateManager
-import net.minecraft.state.property.BooleanProperty
-import net.minecraft.util.math.{BlockPos, Box, Direction, Vec3d}
-import net.minecraft.util.{BlockMirror, BlockRotation}
+import net.minecraft.item.BlockItemUseContext
+import net.minecraft.state.{BooleanProperty, StateContainer}
+import net.minecraft.tileentity.TileEntity
+import net.minecraft.util.math.vector.Vector3d
+import net.minecraft.util.math.{AxisAlignedBB, BlockPos}
+import net.minecraft.util.{Direction, Mirror, Rotation}
 import net.minecraft.world.World
+import net.minecraft.world.server.ServerWorld
 
 import scala.jdk.CollectionConverters._
 import scala.util.chaining._
 
-class RailBlock() extends FacingBlock(RailBlock.settings) {
+class RailBlock() extends DirectionalBlock(RailBlock.settings) {
   def getState(facing: Direction, rotated: Boolean): BlockState =
-    getStateManager.getDefaultState
-      .`with`(FacingBlock.FACING, facing)
+    getStateContainer.getBaseState
+      .`with`(DirectionalBlock.FACING, facing)
       .`with`(RailBlock.ROTATED, java.lang.Boolean.valueOf(rotated))
       .`with`(RailBlock.POWERED, java.lang.Boolean.valueOf(false))
 
   setDefaultState(getState(facing = Direction.UP, rotated = false))
 
-  override protected def appendProperties(stateManager: StateManager.Builder[Block, BlockState]): Unit =
-    stateManager.add(FacingBlock.FACING, RailBlock.ROTATED, RailBlock.POWERED)
+  override protected def fillStateContainer(stateManager: StateContainer.Builder[Block, BlockState]): Unit =
+    stateManager.add(DirectionalBlock.FACING, RailBlock.ROTATED, RailBlock.POWERED)
 
-  override def rotate(state: BlockState, rotation: BlockRotation): BlockState =
-    state.`with`(FacingBlock.FACING, rotation.rotate(state.get(FacingBlock.FACING)))
+  override def rotate(state: BlockState, rotation: Rotation): BlockState =
+    state.`with`(DirectionalBlock.FACING, rotation.rotate(state.get(DirectionalBlock.FACING)))
 
-  override def mirror(state: BlockState, mirror: BlockMirror): BlockState =
-    state.rotate(mirror.getRotation(state.get(FacingBlock.FACING)))
+  override def mirror(state: BlockState, mirror: Mirror): BlockState =
+    state.rotate(mirror.toRotation(state.get(DirectionalBlock.FACING)))
 
   private val preferredAxes: Array[Direction.Axis] =
     Array(Direction.Axis.Y, Direction.Axis.X, Direction.Axis.Z)
@@ -45,7 +44,7 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
       .filterNot(_.getAxis == facingAxis)
       .find { direction =>
         val state = world.getBlockState(pos.offset(direction))
-        state.isOf(this) && state.get(FacingBlock.FACING) == facing
+        state.isIn(this) && state.get(DirectionalBlock.FACING) == facing
       }
       .map(_.getAxis)
       .getOrElse(preferredAxes.iterator.filterNot(_ == facingAxis).next())
@@ -57,19 +56,19 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
     preferredAxes.iterator.filterNot(_ == facingAxis).indexOf(axis) > 0
   }
 
-  override def getPlacementState(ctx: ItemPlacementContext): BlockState = {
-    val facing: Direction = ctx.getPlayerLookDirection.getOpposite
-    val rotated = isRotatedFromSurrounding(ctx.getWorld, ctx.getBlockPos, facing)
+  override def getStateForPlacement(ctx: BlockItemUseContext): BlockState = {
+    val facing: Direction = ctx.getNearestLookingDirection.getOpposite
+    val rotated = isRotatedFromSurrounding(ctx.getWorld, ctx.getPos, facing)
     getState(facing = facing, rotated = rotated)
   }
 
 
-  override def neighborUpdate(state: BlockState, world: World, pos: BlockPos, block: Block, fromPos: BlockPos, notify: Boolean): Unit = {
+  override def neighborChanged(state: BlockState, world: World, pos: BlockPos, block: Block, fromPos: BlockPos, notify: Boolean): Unit = {
     var newState: BlockState = state
 
-    if (block.is(this) || world.getBlockState(fromPos).isOf(this))
+    if (block.func_235332_a_(this) || world.getBlockState(fromPos).isIn(this))
       newState.tap { state =>
-        val facing = state.get(FacingBlock.FACING)
+        val facing = state.get(DirectionalBlock.FACING)
         val rotated = state.get(RailBlock.ROTATED)
         val newRotated = isRotatedFromSurrounding(world, pos, facing)
         if (newRotated != rotated) {
@@ -78,7 +77,7 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
         }
       }
 
-    val isPowered = world.isReceivingRedstonePower(pos)
+    val isPowered = world.isBlockPowered(pos)
     if (isPowered != state.get(RailBlock.POWERED))
       newState.tap { state =>
         newState = state.`with`(RailBlock.POWERED, java.lang.Boolean.valueOf(isPowered))
@@ -96,7 +95,7 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
   }
 
   def movementDirectionFromBlockState(state: BlockState): Direction = {
-    val facing = state.get(FacingBlock.FACING)
+    val facing = state.get(DirectionalBlock.FACING)
     val rotated = state.get(RailBlock.ROTATED)
     movementDirection(facing, rotated)
   }
@@ -109,7 +108,7 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
   }
 
   private def shiftBlocks(world: ServerWorld, pos: BlockPos, state: BlockState, reverse: Boolean = false): Boolean = {
-    val facing = state.get(FacingBlock.FACING)
+    val facing = state.get(DirectionalBlock.FACING)
     val rotated = state.get(RailBlock.ROTATED)
     val direction = movementDirection(facing, rotated).pipe(e => if (reverse) e.getOpposite else e)
     shiftBlocks(world, pos, facing, direction)
@@ -123,8 +122,8 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
 
     def isRail(pos: BlockPos, other: Boolean): Boolean = {
       val state = world.getBlockState(pos)
-      state.isOf(this) && {
-        val railFacing = state.get(FacingBlock.FACING)
+      state.isIn(this) && {
+        val railFacing = state.get(DirectionalBlock.FACING)
         railFacing == (if (other) facing.getOpposite else facing) &&
           movementDirectionFromBlockState(state).getAxis == movementDirection.getAxis
       }
@@ -185,13 +184,13 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
                 follow(posOnRail.offset(facing), facing).take(railDistance - 1)
 
               def isEmpty(state: BlockState): Boolean =
-                state.isAir || (state.getPistonBehavior match {
-                  case PistonBehavior.IGNORE | PistonBehavior.DESTROY => true
+                state.isAir || (state.getPushReaction match {
+                  case PushReaction.IGNORE | PushReaction.DESTROY => true
                   case _ => false
                 })
 
               def isMovable(pos: BlockPos, state: BlockState): Boolean =
-                PistonBlock.isMovable(state, world, pos, movementDirection, true, movementDirection)
+                PistonBlock.canPush(state, world, pos, movementDirection, true, movementDirection)
 
               def areAllEmpty(iterator: IterableOnce[BlockState]): Boolean =
                 iterator.iterator.forall(isEmpty)
@@ -209,9 +208,9 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
                 val row = betweenRails(posOnRail).map(pos => (pos, world.getBlockState(pos))).toSeq
                 val rowEmpty = areAllEmpty(row.iterator.map(_._2))
                 if (rowEmpty) row.foreach {
-                  case (pos, state) => if (!state.isAir && state.getPistonBehavior == PistonBehavior.DESTROY) {
-                    val blockEntity = if (state.getBlock.hasBlockEntity) world.getBlockEntity(pos) else null
-                    Block.dropStacks(state, world.getWorld, pos, blockEntity)
+                  case (pos, state) => if (!state.isAir && state.getPushReaction == PushReaction.DESTROY) {
+                    val blockEntity = if (state.getBlock.hasTileEntity(state)) world.getTileEntity(pos) else null
+                    Block.spawnDrops(state, world, pos, blockEntity);
                   }
                 }
                 rowEmpty
@@ -265,37 +264,37 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
                       .forall(isRow(_, areAllMovable))
 
                   if (allRowsMovable) {
-                    val stateList: Seq[(BlockPos, BlockPos, BlockState, Option[BlockEntity])] =
+                    val stateList: Seq[(BlockPos, BlockPos, BlockState, Option[TileEntity])] =
                       follow(shiftEnd, movementDirection.getOpposite)
                         .take(shiftLength)
                         .flatMap(betweenRails(_).map { pos =>
                           val offset = pos.offset(movementDirection)
                           val state: BlockState = world.getBlockState(pos)
-                          val entityOption: Option[BlockEntity] = Option(world.getBlockEntity(pos))
+                          val entityOption: Option[TileEntity] = Option(world.getTileEntity(pos))
                           (pos, offset, state, entityOption)
                         })
                         .toSeq
 
                     stateList.foreach {
                       case (pos, _, _, _) =>
-                        world.removeBlockEntity(pos)
+                        world.removeTileEntity(pos)
                         world.setBlockState(pos, air, 2 | 16 | 32 | 64)
                     }
 
                     stateList.foreach {
                       case (_, offset, state, entityOption) =>
-                        entityOption.foreach(_.cancelRemoval())
+                        entityOption.foreach(_.validate())
                         WorldUtil.setBlockStateWithBlockEntity(world, offset, state, entityOption.orNull, 1 | 2 | 64)
                     }
 
                     betweenRails(shiftStart).foreach { pos =>
                       val flags = (1 | 2 | 64) & -34
                       val depth = 512
-                      air.updateNeighbors(world, pos, flags, depth)
-                      air.prepare(world, pos, flags, depth)
+                      air.func_241482_a_(world, pos, flags, depth)
+                      air.func_241483_b_(world, pos, flags, depth)
                     }
 
-                    val box: Box = {
+                    val box: AxisAlignedBB = {
                       val a: BlockPos = shiftStart.offset(facing)
                       val b: BlockPos = shiftEnd.offset(facing, railDistance - 1)
 
@@ -306,11 +305,11 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
                       val maxY = Math.max(a.getY, b.getY) + 1.01
                       val maxZ = Math.max(a.getZ, b.getZ) + 1
 
-                      new Box(minX, minY, minZ, maxX, maxY, maxZ)
+                      new AxisAlignedBB(minX, minY, minZ, maxX, maxY, maxZ)
                     }
 
-                    val movementVector: Vec3d = Vec3d.of(movementDirection.getVector)
-                    world.getNonSpectatingEntities(classOf[Entity], box).iterator.asScala.foreach { entity =>
+                    val movementVector: Vector3d = Vector3d.func_237491_b_(movementDirection.getDirectionVec)
+                    world.getEntitiesWithinAABB(classOf[Entity], box).iterator.asScala.foreach { entity =>
                       /*val newPos = entity.getPos.add(movementVector)
                       entity.teleport(newPos.getX, newPos.getY, newPos.getZ)*/
                       EntityMover(world).queueMove(entity, movementVector)
@@ -330,12 +329,12 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
 
 object RailBlock {
   private val settings =
-    FabricBlockSettings
-      .of(Material.STONE)
-      .hardness(2.0F)
+    AbstractBlock.Properties
+      .create(Material.ROCK)
+      .hardnessAndResistance(2.0F)
 
-  val ROTATED: BooleanProperty = BooleanProperty.of("rotated")
-  val POWERED: BooleanProperty = BooleanProperty.of("powered")
+  val ROTATED: BooleanProperty = BooleanProperty.create("rotated")
+  val POWERED: BooleanProperty = BooleanProperty.create("powered")
 
   val maxRailDistance: Int = 64
 }
