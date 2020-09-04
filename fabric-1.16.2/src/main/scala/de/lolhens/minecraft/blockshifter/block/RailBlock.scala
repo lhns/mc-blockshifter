@@ -184,7 +184,7 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
               def betweenRails(posOnRail: BlockPos): Iterator[BlockPos] =
                 follow(posOnRail.offset(facing), facing).take(railDistance - 1)
 
-              def isEmpty(state: BlockState): Boolean =
+              def isEmpty(pos: BlockPos, state: BlockState): Boolean =
                 state.isAir || (state.getPistonBehavior match {
                   case PistonBehavior.IGNORE | PistonBehavior.DESTROY => true
                   case _ => false
@@ -193,8 +193,8 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
               def isMovable(pos: BlockPos, state: BlockState): Boolean =
                 PistonBlock.isMovable(state, world, pos, movementDirection, true, movementDirection)
 
-              def areAllEmpty(iterator: IterableOnce[BlockState]): Boolean =
-                iterator.iterator.forall(isEmpty)
+              def areAllEmpty(iterator: IterableOnce[(BlockPos, BlockState)]): Boolean =
+                iterator.iterator.forall(e => isEmpty(e._1, e._2))
 
               def areAllMovable(iterator: IterableOnce[(BlockPos, BlockState)]): Boolean =
                 iterator.iterator.forall(e => isMovable(e._1, e._2))
@@ -203,11 +203,11 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
                 f(betweenRails(posOnRail).map(pos => (pos, world.getBlockState(pos))).toSeq)
 
               def isRowEmptyOrImmovable(posOnRail: BlockPos): Boolean =
-                isRow(posOnRail, blocks => areAllEmpty(blocks.iterator.map(_._2)) || !areAllMovable(blocks))
+                isRow(posOnRail, blocks => areAllEmpty(blocks) || !areAllMovable(blocks))
 
               def clearFirstRow(posOnRail: BlockPos): Boolean = {
                 val row = betweenRails(posOnRail).map(pos => (pos, world.getBlockState(pos))).toSeq
-                val rowEmpty = areAllEmpty(row.iterator.map(_._2))
+                val rowEmpty = areAllEmpty(row)
                 if (rowEmpty) row.foreach {
                   case (pos, state) => if (!state.isAir && state.getPistonBehavior == PistonBehavior.DESTROY) {
                     val blockEntity = if (state.getBlock.hasBlockEntity) world.getBlockEntity(pos) else null
@@ -277,22 +277,30 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
                         .toSeq
 
                     stateList.foreach {
-                      case (pos, _, _, _) =>
+                      case (pos, offset, state, entityOption) =>
+                        val flags = 2 | 16 | 32 | 64
                         world.removeBlockEntity(pos)
-                        world.setBlockState(pos, air, 2 | 16 | 32 | 64)
+                        world.setBlockState(pos, air, flags)
+                        entityOption.foreach(_.cancelRemoval())
+                        WorldUtil.setBlockStateWithBlockEntity(world, offset, state, entityOption.orNull, flags)
+                    }
+
+                    def updateBlockAndNeighbors(pos: BlockPos, state: BlockState, extraFlags: Int = 0): Unit = {
+                      val flags = (1 | 2 | extraFlags) & -34
+                      world.updateNeighbor(pos, state.getBlock, pos)
+                      state.updateNeighbors(world, pos, flags)
+                      state.prepare(world, pos, flags)
                     }
 
                     stateList.foreach {
-                      case (_, offset, state, entityOption) =>
-                        entityOption.foreach(_.cancelRemoval())
-                        WorldUtil.setBlockStateWithBlockEntity(world, offset, state, entityOption.orNull, 1 | 2 | 64)
+                      case (_, offset, state, _) =>
+                        val newState = Block.postProcessState(state, world, offset)
+                        Block.replace(state, newState, world, offset, 2 | 16 | 64)
+                        updateBlockAndNeighbors(offset, newState, extraFlags = 64)
                     }
 
                     betweenRails(shiftStart).foreach { pos =>
-                      val flags = (1 | 2 | 64) & -34
-                      val depth = 512
-                      air.updateNeighbors(world, pos, flags, depth)
-                      air.prepare(world, pos, flags, depth)
+                      updateBlockAndNeighbors(pos, air, extraFlags = 64)
                     }
 
                     val box: Box = {

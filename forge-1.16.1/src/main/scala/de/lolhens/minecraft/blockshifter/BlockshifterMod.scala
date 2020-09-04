@@ -32,7 +32,7 @@ object BlockshifterMod {
   })
 
   FMLJavaModLoadingContext.get.getModEventBus.addGenericListener(classOf[Item], { event: RegistryEvent.Register[Item] =>
-    event.getRegistry.register(new BlockItem(RAIL_BLOCK, new Item.Properties().group(ItemGroup.BUILDING_BLOCKS)).setRegistryName(RAIL_BLOCK_ID))
+    event.getRegistry.register(new BlockItem(RAIL_BLOCK, new Item.Properties().group(ItemGroup.REDSTONE)).setRegistryName(RAIL_BLOCK_ID))
   })
 
   MinecraftForge.EVENT_BUS.addListener { event: TickEvent.WorldTickEvent =>

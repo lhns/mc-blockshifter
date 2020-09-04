@@ -21,7 +21,9 @@ object WorldUtil {
     if (entity == null) {
       world.setBlockState(pos, state, flags)
     } else {
+      val cancelRemoval = !entity.isRemoved
       world.removeTileEntity(pos)
+      if (cancelRemoval) entity.validate()
       setNextCreatedBlockEntity(entity)
       val result = world.setBlockState(pos, state, flags)
       entity.updateContainingBlockInfo()

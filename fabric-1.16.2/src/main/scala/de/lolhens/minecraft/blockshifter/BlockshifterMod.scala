@@ -23,7 +23,7 @@ object BlockshifterMod extends ModInitializer {
 
   override def onInitialize(): Unit = {
     Registry.register(Registry.BLOCK, RAIL_BLOCK_ID, RAIL_BLOCK)
-    Registry.register(Registry.ITEM, RAIL_BLOCK_ID, new BlockItem(RAIL_BLOCK, new Item.Settings().group(ItemGroup.BUILDING_BLOCKS)))
+    Registry.register(Registry.ITEM, RAIL_BLOCK_ID, new BlockItem(RAIL_BLOCK, new Item.Settings().group(ItemGroup.REDSTONE)))
 
     ServerTickEvents.START_WORLD_TICK.register { world =>
       EntityMover(world).moveAll()
