@@ -38,28 +38,70 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
   private val preferredAxes: Array[Direction.Axis] =
     Array(Direction.Axis.Y, Direction.Axis.X, Direction.Axis.Z)
 
-  private def movementAxisFromSurrounding(world: World, pos: BlockPos, facing: Direction): Direction.Axis = {
+  private def preferredMovementAxisFromSurrounding(world: World,
+                                                   pos: BlockPos,
+                                                   facing: Direction,
+                                                   preferredAxis: Option[Direction.Axis],
+                                                   rotateSurrounding: Boolean = true): Option[Direction.Axis] = {
     val facingAxis = facing.getAxis
-    Direction.values
+    val connectedAxes = Direction.values
       .iterator
       .filterNot(_.getAxis == facingAxis)
-      .find { direction =>
-        val state = world.getBlockState(pos.offset(direction))
-        state.isOf(this) && state.get(FacingBlock.FACING) == facing
+      .filter { direction =>
+        val offset = pos.offset(direction)
+        val state = world.getBlockState(offset)
+        state.isOf(this) && (state.getBlock match {
+          case rail: RailBlock =>
+            val otherFacing = state.get(FacingBlock.FACING)
+            otherFacing == facing && {
+              val otherRotated = state.get(RailBlock.ROTATED)
+              val otherMovementAxis = movementAxis(otherFacing, otherRotated)
+              otherMovementAxis == direction.getAxis || (rotateSurrounding && {
+                rail.preferredMovementAxisFromSurrounding(
+                  world,
+                  offset,
+                  otherFacing,
+                  Some(otherMovementAxis),
+                  rotateSurrounding = false
+                )
+                  .forall(_ == direction.getAxis)
+              })
+            }
+        })
       }
       .map(_.getAxis)
-      .getOrElse(preferredAxes.iterator.filterNot(_ == facingAxis).next())
+      .toArray
+
+    preferredAxis.filter(connectedAxes.contains)
+      .orElse(connectedAxes.headOption)
   }
 
-  private def isRotatedFromSurrounding(world: World, pos: BlockPos, facing: Direction): Boolean = {
+  private def movementAxisFromSurrounding(world: World,
+                                          pos: BlockPos,
+                                          facing: Direction,
+                                          preferredAxis: Option[Direction.Axis]): Direction.Axis = {
     val facingAxis = facing.getAxis
-    val axis = movementAxisFromSurrounding(world, pos, facing)
-    preferredAxes.iterator.filterNot(_ == facingAxis).indexOf(axis) > 0
+    preferredMovementAxisFromSurrounding(world, pos, facing, preferredAxis)
+      .getOrElse {
+        val axes = preferredAxes
+          .iterator
+          .filterNot(_ == facingAxis)
+          .toArray
+
+        preferredAxis.filter(axes.contains)
+          .getOrElse(axes.head)
+      }
+  }
+
+  private def isRotatedFromSurrounding(world: World, pos: BlockPos, facing: Direction, preferRotated: Option[Boolean]): Boolean = {
+    val preferredAxis = preferRotated.map(movementAxis(facing, _))
+    val axis = movementAxisFromSurrounding(world, pos, facing, preferredAxis)
+    preferredAxes.iterator.filterNot(_ == facing.getAxis).indexOf(axis) > 0
   }
 
   override def getPlacementState(ctx: ItemPlacementContext): BlockState = {
     val facing: Direction = ctx.getPlayerLookDirection.getOpposite
-    val rotated = isRotatedFromSurrounding(ctx.getWorld, ctx.getBlockPos, facing)
+    val rotated = isRotatedFromSurrounding(ctx.getWorld, ctx.getBlockPos, facing, None)
     getState(facing = facing, rotated = rotated)
   }
 
@@ -71,10 +113,10 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
       newState.tap { state =>
         val facing = state.get(FacingBlock.FACING)
         val rotated = state.get(RailBlock.ROTATED)
-        val newRotated = isRotatedFromSurrounding(world, pos, facing)
+        val newRotated = isRotatedFromSurrounding(world, pos, facing, Some(rotated))
         if (newRotated != rotated) {
           newState = state.`with`(RailBlock.ROTATED, java.lang.Boolean.valueOf(newRotated))
-          world.setBlockState(pos, newState, 2)
+          world.setBlockState(pos, newState, 3)
         }
       }
 
@@ -101,11 +143,13 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
     movementDirection(facing, rotated)
   }
 
+  def movementAxis(facing: Direction, rotated: Boolean): Direction.Axis =
+    preferredAxes.iterator.filterNot(_ == facing.getAxis).drop(if (rotated) 1 else 0).next()
+
   def movementDirection(facing: Direction, rotated: Boolean): Direction = {
-    val facingAxis = facing.getAxis
-    val opposite = Direction.values.iterator.filter(_.getAxis == facingAxis).indexOf(facing) > 0
-    val movementAxis = preferredAxes.iterator.filterNot(_ == facing.getAxis).drop(if (rotated) 1 else 0).next()
-    Direction.values.iterator.filter(_.getAxis == movementAxis).drop(if (opposite) 1 else 0).next()
+    val opposite = Direction.values.iterator.filter(_.getAxis == facing.getAxis).indexOf(facing) > 0
+    val axis = movementAxis(facing, rotated)
+    Direction.values.iterator.filter(_.getAxis == axis).drop(if (opposite) 1 else 0).next()
   }
 
   private def shiftBlocks(world: ServerWorld, pos: BlockPos, state: BlockState, reverse: Boolean = false): Boolean = {
