@@ -201,8 +201,20 @@ class RailBlock() extends DirectionalBlock(RailBlock.settings) {
               .take(RailBlock.maxRailDistance)
               .zipWithIndex
               .drop(1)
-              .find(e => isOtherRail(e._1))
-              .filter(_._2 > 0)
+              .scanLeft[(Int, Option[(BlockPos, Int)])]((0, None)) {
+                case (nop@(recursion, _), otherRail@(otherRailPos, _)) =>
+                  if (isOtherRail(otherRailPos)) {
+                    if (recursion <= 0)
+                      (0, Some(otherRail))
+                    else
+                      (recursion - 1, None)
+                  } else if (isThisRail(otherRailPos)) {
+                    (recursion + 1, None)
+                  } else {
+                    nop
+                  }
+              }
+              .collectFirst(Function.unlift(_._2))
               .map {
                 case (otherRailPos, railDistance) =>
                   (railStart, railStartOffset, otherRailPos, railDistance)
