@@ -17,16 +17,6 @@ Castle gates and retractable bridges are nice examples where this could be usefu
 ## Usage
 Blockshifter Rails act similar to drawers. They can move blocks that stand over at the end of the rails. How much overhang is taken into account depends on how many empty blocks are on the other side. When you are experimenting with this mod you will probably pull out some blocks from the ground under the rails once or twice. You can prevent this by using obsidian.
 
-## Recipes
-#### Blockshifter Rail
-![Blockshifter Rail](https://raw.githubusercontent.com/LolHens/mc-blockshifter/master/screenshots/recipe_rail.png)
-
-## Screenshots
-![](https://raw.githubusercontent.com/LolHens/mc-blockshifter/master/screenshots/2020-07-28_22.36.24.png)
-
-## Videos
-[![](https://img.youtube.com/vi/XZF2xQxtlSY/0.jpg)](https://www.youtube.com/watch?v=XZF2xQxtlSY)
-
 ## Requirements
 ### [Fabric](https://fabricmc.net/)
 [<img src="https://fabricmc.net/assets/logo.png" width="32"> Fabric API](https://www.curseforge.com/minecraft/mc-mods/fabric-api)
@@ -39,6 +29,16 @@ Blockshifter Rails act similar to drawers. They can move blocks that stand over 
 [<img src="https://user-images.githubusercontent.com/1524059/91673183-2849b500-eb33-11ea-8f9d-3d486f266000.png" width="32"> Scalable Cat's Force](https://www.curseforge.com/minecraft/mc-mods/scalable-cats-force)
 
 [<img src="https://user-images.githubusercontent.com/1524059/94992271-30a96b80-0589-11eb-8fcd-b6c8ed66ad32.png" width="32"> MixinBootstrap](https://www.curseforge.com/minecraft/mc-mods/mixinbootstrap) (only required on 1.15.2)
+
+## Recipes
+#### Blockshifter Rail
+![Blockshifter Rail](https://raw.githubusercontent.com/LolHens/mc-blockshifter/master/screenshots/recipe_rail.png)
+
+## Screenshots
+![](https://raw.githubusercontent.com/LolHens/mc-blockshifter/master/screenshots/2020-07-28_22.36.24.png)
+
+## Videos
+[![](https://img.youtube.com/vi/XZF2xQxtlSY/0.jpg)](https://www.youtube.com/watch?v=XZF2xQxtlSY)
 
 ## License
 This project uses the Apache 2.0 License. See the file called LICENSE.
