@@ -108,7 +108,7 @@ class RailBlock() extends DirectionalBlock(RailBlock.settings) {
   override def neighborChanged(state: BlockState, world: World, pos: BlockPos, block: Block, fromPos: BlockPos, notify: Boolean): Unit = {
     var newState: BlockState = state
 
-    if (block.func_235332_a_(this) || world.getBlockState(fromPos).isIn(this))
+    if (block.matchesBlock(this) || world.getBlockState(fromPos).isIn(this))
       newState.tap { state =>
         val facing = state.get(DirectionalBlock.FACING)
         val rotated = state.get(RailBlock.ROTATED)
@@ -343,7 +343,7 @@ class RailBlock() extends DirectionalBlock(RailBlock.settings) {
                     def updateBlockAndNeighbors(pos: BlockPos, state: BlockState, extraFlags: Int = 0): Unit = {
                       val flags = (1 | 2 | extraFlags) & -34
                       world.neighborChanged(pos, state.getBlock, pos)
-                      state.func_235734_a_(world, pos, flags)
+                      state.updateNeighbours(world, pos, flags)
                       state.updateDiagonalNeighbors(world, pos, flags)
                     }
 
@@ -372,7 +372,7 @@ class RailBlock() extends DirectionalBlock(RailBlock.settings) {
                       new AxisAlignedBB(minX, minY, minZ, maxX, maxY, maxZ)
                     }
 
-                    val movementVector: Vector3d = Vector3d.func_237491_b_(movementDirection.getDirectionVec)
+                    val movementVector: Vector3d = Vector3d.copy(movementDirection.getDirectionVec)
                     world.getEntitiesWithinAABB(classOf[Entity], box).iterator.asScala.foreach { entity =>
                       /*val newPos = entity.getPos.add(movementVector)
                       entity.teleport(newPos.getX, newPos.getY, newPos.getZ)*/
