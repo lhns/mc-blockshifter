@@ -247,7 +247,7 @@ class RailBlock() extends FacingBlock(RailBlock.settings) {
                 })
 
               def isMovable(pos: BlockPos, state: BlockState): Boolean =
-                PistonBlock.isMovable(state, world, pos, movementDirection, true, movementDirection) //|| state.hasBlockEntity // TODO
+                PistonBlock.isMovable(state, world, pos, movementDirection, true, movementDirection)
 
               def areAllEmpty(iterator: IterableOnce[(BlockPos, BlockState)]): Boolean =
                 iterator.iterator.forall(e => isEmpty(e._1, e._2))

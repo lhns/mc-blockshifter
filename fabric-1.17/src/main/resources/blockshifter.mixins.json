@@ -4,6 +4,7 @@
   "package": "de.lolhens.minecraft.blockshifter.mixin",
   "compatibilityLevel": "JAVA_8",
   "mixins": [
+    "BlockEntityAccessor",
     "WorldChunkMixin"
   ],
   "injectors": {

@@ -1,5 +1,6 @@
 package de.lolhens.minecraft.blockshifter.util
 
+import de.lolhens.minecraft.blockshifter.mixin.BlockEntityAccessor
 import net.minecraft.block.BlockState
 import net.minecraft.block.entity.BlockEntity
 import net.minecraft.util.math.BlockPos
@@ -24,9 +25,10 @@ object WorldUtil {
       val cancelRemoval = !entity.isRemoved
       world.removeBlockEntity(pos)
       if (cancelRemoval) entity.cancelRemoval()
+      entity.asInstanceOf[BlockEntityAccessor].setPos(pos.toImmutable)
       setNextCreatedBlockEntity(entity)
       val result = world.setBlockState(pos, state, flags)
-      entity.setCachedState(null)
+      entity.setCachedState(state)
       result
     }
   }
