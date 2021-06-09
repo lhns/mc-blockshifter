@@ -117,7 +117,7 @@ dependencies {
     implementation 'org.spongepowered:mixin:0.8'
     implementation "scalable-cats-force:ScalableCatsForce-2.13.2-build:2:dev"
     implementation "org.scala-lang:scala-library:2.13.6"
-    implementation group: 'org.typelevel', name: "cats-core_2.13", version: '2.1.0'
+    implementation group: 'org.typelevel', name: "cats-core_2.13", version: '2.6.1'
 }
 
 def mixinstubsDir = file("$compileJava.temporaryDir/mixinstubs")
