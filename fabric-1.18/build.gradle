@@ -14,8 +14,8 @@ apply plugin: 'scala'
 apply plugin: 'fabric-loom'
 apply plugin: 'maven-publish'
 
-sourceCompatibility = JavaVersion.VERSION_1_8
-targetCompatibility = JavaVersion.VERSION_1_8
+sourceCompatibility = JavaVersion.VERSION_17
+targetCompatibility = JavaVersion.VERSION_17
 
 archivesBaseName = parent.project.archives_base_name
 version = parent.version + "+fabric-" + project.minecraft_version
@@ -35,7 +35,7 @@ dependencies {
     // Fabric API. This is technically optional, but you probably want it anyway.
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
-    modImplementation "net.fabricmc:fabric-language-scala:1.0.0"
+    modImplementation "net.fabricmc:fabric-language-scala:1.1.0+scala.2.13.6"
 
     compileOnly group: 'com.google.code.findbugs', name: 'jsr305', version: '3.0.2'
 
