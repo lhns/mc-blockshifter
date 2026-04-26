@@ -1,4 +1,11 @@
 pluginManagement {
+    // Composite-build mcdp so the `de.lhns.mcdp` Gradle plugin id resolves
+    // without any publish step. The runtime adapters (mcdp-fabric, mcdp-neoforge)
+    // do not flow through composite substitution and must be published to
+    // mavenLocal first:
+    //   ../mc-scala/gradlew :fabric:publishToMavenLocal :neoforge:publishToMavenLocal
+    includeBuild('../mc-scala')
+
     repositories {
         gradlePluginPortal()
         maven {

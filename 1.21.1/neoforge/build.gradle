@@ -1,8 +1,16 @@
 plugins {
-    id 'net.neoforged.moddev' version '1.0.21'
+    id 'net.neoforged.moddev' version '2.0.91'
+    id 'de.lhns.mcdp'
 }
 
 def commonProject = project(':1.21.1:common')
+
+repositories {
+    // mcdp-neoforge runtime adapter — published as a shadow jar to mavenLocal
+    // by mc-scala. Run before building:
+    //   ../mc-scala/gradlew :neoforge:publishToMavenLocal
+    mavenLocal()
+}
 
 neoForge {
     version = project.parent.neoforge_version
@@ -27,18 +35,19 @@ neoForge {
     }
 }
 
-configurations {
-    scalaShade
-    implementation.extendsFrom scalaShade
-}
-
 dependencies {
     compileOnly commonProject
-    scalaShade "org.scala-lang:scala-library:${project.parent.scala_library_version}"
 
-    jarJar("org.scala-lang:scala-library:${project.parent.scala_library_version}") {
-        version { strictly "[2.13,3)" }
-    }
+    // mcdp NeoForge runtime adapter — replaces the scala-library jarJar shade.
+    // Discovers @Mod-annotated classes the same way vanilla javafml does and
+    // dispatches the (IEventBus) constructor.
+    implementation "de.lhns.mcdp:mcdp-neoforge:${project.parent.mcdp_version}"
+
+    mcdepImplementation "org.scala-lang:scala-library:${project.parent.scala_library_version}"
+}
+
+mcdepprovider {
+    lang.set('scala')
 }
 
 sourceSets {
