@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "top": "blockshifter:block/rail",
+    "bottom": "blockshifter:block/rail_back",
+    "side": "blockshifter:block/rail_side"
+  }
+}

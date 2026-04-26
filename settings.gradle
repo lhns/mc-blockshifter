@@ -1,12 +1,40 @@
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        maven {
+            name = 'FabricMC'
+            url = 'https://maven.fabricmc.net/'
+        }
+        maven {
+            name = 'NeoForged'
+            url = 'https://maven.neoforged.net/releases'
+        }
+    }
+}
+
 rootProject.name = 'mc-blockshifter'
 
-include ':fabric-1.15.2'
-include ':fabric-1.16.1'
-include ':fabric-1.16.2'
-include ':fabric-1.16.4'
-include ':fabric-1.17'
-include ':fabric-1.18'
-include ':forge-1.15.2'
-include ':forge-1.16.1'
-include ':forge-1.16.2'
-include ':forge-1.16.4'
+// Old Fabric subprojects pin Loom 1.1.9, which collides at runtime with the
+// Loom 1.7.x required by 1.21.1. Re-enable after migrating these to Loom 1.7+
+// (or split into a composite build).
+// include ':fabric-1.15.2'
+// include ':fabric-1.16.1'
+// include ':fabric-1.16.2'
+// include ':fabric-1.16.4'
+// include ':fabric-1.17'
+// include ':fabric-1.18'
+// Old Forge subprojects use ForgeGradle 5.1.67 which is incompatible with Gradle 8.x
+// (required by the 1.21.1 multiloader subprojects via NeoForge ModDevGradle).
+// Re-enable after migrating these to ForgeGradle 6 or NeoGradle.
+// include ':forge-1.15.2'
+// include ':forge-1.16.1'
+// include ':forge-1.16.2'
+// include ':forge-1.16.4'
+
+include ':1.21.1'
+include ':1.21.1:common'
+include ':1.21.1:fabric'
+include ':1.21.1:neoforge'
+project(':1.21.1:common').projectDir   = file('1.21.1/common')
+project(':1.21.1:fabric').projectDir   = file('1.21.1/fabric')
+project(':1.21.1:neoforge').projectDir = file('1.21.1/neoforge')

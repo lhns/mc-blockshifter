@@ -1,0 +1,49 @@
+plugins {
+    id 'net.neoforged.moddev' version '1.0.21'
+}
+
+def commonProject = project(':1.21.1:common')
+
+neoForge {
+    version = project.parent.neoforge_version
+    parchment {
+        minecraftVersion = project.parent.parchment_minecraft
+        mappingsVersion = project.parent.parchment_version
+    }
+
+    runs {
+        client {
+            client()
+        }
+        server {
+            server()
+        }
+    }
+
+    mods {
+        blockshifter {
+            sourceSet sourceSets.main
+        }
+    }
+}
+
+configurations {
+    scalaShade
+    implementation.extendsFrom scalaShade
+}
+
+dependencies {
+    compileOnly commonProject
+    scalaShade "org.scala-lang:scala-library:${project.parent.scala_library_version}"
+
+    jarJar("org.scala-lang:scala-library:${project.parent.scala_library_version}") {
+        version { strictly "[2.13,3)" }
+    }
+}
+
+sourceSets {
+    main {
+        scala.srcDirs += commonProject.file('src/main/scala')
+        resources.srcDirs += commonProject.file('src/main/resources')
+    }
+}

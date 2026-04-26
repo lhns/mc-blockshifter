@@ -1,0 +1,40 @@
+plugins {
+    id 'fabric-loom' version '1.7-SNAPSHOT'
+}
+
+def commonProject = project(':1.21.1:common')
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.parent.minecraft_version}"
+    mappings loom.layered {
+        officialMojangMappings()
+        parchment("org.parchmentmc.data:parchment-${project.parent.parchment_minecraft}:${project.parent.parchment_version}@zip")
+    }
+    modImplementation "net.fabricmc:fabric-loader:${project.parent.fabric_loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.parent.fabric_api_version}"
+
+    compileOnly commonProject
+
+    implementation "org.scala-lang:scala-library:${project.parent.scala_library_version}"
+    include "org.scala-lang:scala-library:${project.parent.scala_library_version}"
+}
+
+sourceSets {
+    main {
+        scala.srcDirs += commonProject.file('src/main/scala')
+        resources.srcDirs += commonProject.file('src/main/resources')
+    }
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('fabric.mod.json') {
+        expand version: project.version
+    }
+}
+
+loom {
+    mixin {
+        defaultRefmapName = 'blockshifter.refmap.json'
+    }
+}

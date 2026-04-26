@@ -1,0 +1,16 @@
+plugins {
+    id 'net.neoforged.moddev' version '1.0.21'
+}
+
+neoForge {
+    neoFormVersion = project.parent.neo_form_version
+    parchment {
+        minecraftVersion = project.parent.parchment_minecraft
+        mappingsVersion = project.parent.parchment_version
+    }
+}
+
+dependencies {
+    compileOnly "org.scala-lang:scala-library:${project.parent.scala_library_version}"
+    compileOnly "org.spongepowered:mixin:0.8.5"
+}
