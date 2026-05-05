@@ -1,15 +1,20 @@
 plugins {
     id 'net.neoforged.moddev' version '2.0.91'
+    // de.lhns.mcdp is declared in the root build.gradle plugins{} block (with `apply false`)
+    // so the plugin classloader is shared with :1.21.1:fabric — re-applied here without version.
     id 'de.lhns.mcdp'
 }
 
 def commonProject = project(':1.21.1:common')
 
 repositories {
-    // mcdp-neoforge runtime adapter — published as a shadow jar to mavenLocal
-    // by mc-scala. Run before building:
-    //   ../mc-scala/gradlew :neoforge:publishToMavenLocal
-    mavenLocal()
+    // mcdp (`de.lhns.mcdp:mcdp`) — release versions live on Maven Central, SNAPSHOTs on
+    // the Sonatype Central Portal snapshots repo.
+    mavenCentral()
+    maven {
+        name = 'sonatype-central-snapshots'
+        url = 'https://central.sonatype.com/repository/maven-snapshots/'
+    }
 }
 
 neoForge {
@@ -38,16 +43,21 @@ neoForge {
 dependencies {
     compileOnly commonProject
 
-    // mcdp NeoForge runtime adapter — replaces the scala-library jarJar shade.
-    // Discovers @Mod-annotated classes the same way vanilla javafml does and
-    // dispatches the (IEventBus) constructor.
-    implementation "de.lhns.mcdp:mcdp-neoforge:${project.parent.mcdp_version}"
+    // mcdp unified runtime adapter (ADR-0016) — single jar bundles both Fabric and NeoForge
+    // adapters. Discovers @Mod-annotated classes via ModFileScanData.getAnnotatedBy(Mod.class)
+    // like vanilla javafml, and FML's bag-based ctor dispatch (ADR-0017) accepts (), (IEventBus),
+    // (ModContainer), or any subset/superset of [IEventBus, ModContainer, Dist].
+    implementation "de.lhns.mcdp:mcdp:${project.parent.mcdp_version}"
 
     mcdepImplementation "org.scala-lang:scala-library:${project.parent.scala_library_version}"
 }
 
 mcdepprovider {
     lang.set('scala')
+    // Override the auto-derived bridge package — see fabric/build.gradle for rationale.
+    bridges {
+        bridgePackage.set('de.lolhens.minecraft.blockshifter.neoforge.mcdp_bridges')
+    }
 }
 
 sourceSets {

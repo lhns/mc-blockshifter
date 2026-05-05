@@ -1,14 +1,19 @@
-plugins {
-    id 'fabric-loom' version '1.7-SNAPSHOT'
-    id 'de.lhns.mcdp'
-}
+// fabric-loom and de.lhns.mcdp come from the root build.gradle plugins{} block (with
+// `apply false`) so the plugin classloader is shared with :1.21.1:neoforge.
+apply plugin: 'fabric-loom'
+apply plugin: 'de.lhns.mcdp'
 
 def commonProject = project(':1.21.1:common')
 
 repositories {
-    // mcdp-fabric runtime adapter is published as a shadow jar to mavenLocal
-    // by mc-scala (composite substitution doesn't flow through to it).
-    mavenLocal()
+    // mcdp (`de.lhns.mcdp:mcdp`) — release versions live on Maven Central, SNAPSHOTs on
+    // the Sonatype Central Portal snapshots repo. Both kept available so `mcdp_version`
+    // in root gradle.properties can flip between them without repo edits.
+    mavenCentral()
+    maven {
+        name = 'sonatype-central-snapshots'
+        url = 'https://central.sonatype.com/repository/maven-snapshots/'
+    }
 }
 
 dependencies {
@@ -20,17 +25,26 @@ dependencies {
     modImplementation "net.fabricmc:fabric-loader:${project.parent.fabric_loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.parent.fabric_api_version}"
 
-    // mcdp Fabric runtime adapter — provides the `mcdepprovider` LanguageAdapter
-    // and the per-mod URLClassLoader that serves scala-library at runtime.
-    modImplementation "de.lhns.mcdp:mcdp-fabric:${project.parent.mcdp_version}"
+    // mcdp unified runtime adapter (ADR-0016) — single jar bundles both Fabric and NeoForge
+    // adapters. Provides the `mcdepprovider` LanguageAdapter referenced in fabric.mod.json
+    // and the per-mod URLClassLoader that serves scala-library at runtime. Auto Mixin →
+    // mod-private bridge codegen (ADR-0018) is on by default.
+    modImplementation "de.lhns.mcdp:mcdp:${project.parent.mcdp_version}"
 
-    // Scala stdlib goes through mcdp's per-mod loader instead of being shaded
-    // into the jar. The Gradle plugin emits these into META-INF/mcdepprovider.toml.
+    // Scala stdlib goes through mcdp's per-mod loader instead of being shaded into the jar.
+    // The Gradle plugin emits this into META-INF/mcdepprovider.toml.
     mcdepImplementation "org.scala-lang:scala-library:${project.parent.scala_library_version}"
 }
 
 mcdepprovider {
     lang.set('scala')
+    // Override the auto-derived bridge package: mcdp's default builds it as
+    //   <group>.<projectName.replace('-','_')>.mcdp_mixin_bridges
+    // For projectName "fabric" under parent "1.21.1" the leading numeric segment makes
+    // some derived names invalid Java identifiers. Pin a valid identifier explicitly.
+    bridges {
+        bridgePackage.set('de.lolhens.minecraft.blockshifter.fabric.mcdp_bridges')
+    }
 }
 
 sourceSets {
