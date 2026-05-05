@@ -3,6 +3,7 @@ package de.lolhens.minecraft.blockshifter.fabric
 import de.lolhens.minecraft.blockshifter.{BlockshifterMod, BlockshifterPlatform}
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents
 import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents
+import net.fabricmc.loader.api.FabricLoader
 import net.minecraft.core.Registry
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.resources.{ResourceKey, ResourceLocation}
@@ -10,9 +11,12 @@ import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.item.{CreativeModeTab, Item}
 import net.minecraft.world.level.block.Block
 
+import java.nio.file.Path
 import java.util.function.Supplier
 
 class FabricPlatform extends BlockshifterPlatform {
+  override def configDir: Path = FabricLoader.getInstance().getConfigDir
+
   private def rl(path: String): ResourceLocation =
     ResourceLocation.fromNamespaceAndPath(BlockshifterMod.id, path)
 

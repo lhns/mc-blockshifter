@@ -45,6 +45,14 @@ neoForge {
 }
 
 dependencies {
-    compileOnly "org.scala-lang:scala-library:${project.scala_library_version}"
+    // Scala 3 stdlib + circe — compile-only here in :common-1.21.1; runtime delivery is
+    // handled by mcdp's per-mod loader in :fabric-1.21.1 and :neoforge-1.21.1.
+    compileOnly "org.scala-lang:scala3-library_3:${project.scala3_version}"
     compileOnly "org.spongepowered:mixin:0.8.5"
+
+    compileOnly "io.circe:circe-parser_3:${project.circe_version}"
+    compileOnly "io.circe:circe-generic_3:${project.circe_version}"
+    compileOnly "io.circe:circe-generic-extras_3:${project.circe_extras_version}"
+    compileOnly "io.circe:circe-config_3:${project.circe_config_version}"
+    compileOnly "org.typelevel:cats-core_3:${project.cats_version}"
 }

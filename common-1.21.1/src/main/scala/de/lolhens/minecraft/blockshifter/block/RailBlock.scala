@@ -1,5 +1,6 @@
 package de.lolhens.minecraft.blockshifter.block
 
+import de.lolhens.minecraft.blockshifter.BlockshifterMod
 import de.lolhens.minecraft.blockshifter.util.{EntityMover, WorldUtil}
 import net.minecraft.core.{BlockPos, Direction}
 import net.minecraft.server.level.ServerLevel
@@ -185,7 +186,7 @@ class RailBlock() extends DirectionalBlock(RailBlock.settings) {
         .iterator
         .map[BlockPos](pos.relative)
         .filter(isThisRail)
-        .exists(world.getBlockState(_).getValue(RailBlock.POWERED))
+        .exists(p => world.getBlockState(p).getValue[java.lang.Boolean](RailBlock.POWERED))
 
     if (!neighborAlreadyPowered) {
       val thisRailStart = follow(pos, movementDirection.getOpposite).takeWhile(isThisRail).toList.last
@@ -229,7 +230,7 @@ class RailBlock() extends DirectionalBlock(RailBlock.settings) {
               (follow(railStart, movementDirection).take(railLength) ++
                 follow(otherRailPos, movementDirection).take(railLength))
                 .filterNot(_ == pos)
-                .exists(world.getBlockState(_).getValue(RailBlock.POWERED))
+                .exists(p => world.getBlockState(p).getValue[java.lang.Boolean](RailBlock.POWERED))
 
             if (!alreadyPowered) {
               def betweenRails(posOnRail: BlockPos): Iterator[BlockPos] =
@@ -242,7 +243,10 @@ class RailBlock() extends DirectionalBlock(RailBlock.settings) {
                 })
 
               def isMovable(pos: BlockPos, state: BlockState): Boolean =
-                PistonBaseBlock.isPushable(state, world, pos, movementDirection, true, movementDirection)
+                if (BlockshifterMod.config.moveBlockEntities.value)
+                  RailBlock.isPushableLenient(state, world, pos, movementDirection, destroyBlocks = true, movementDirection)
+                else
+                  PistonBaseBlock.isPushable(state, world, pos, movementDirection, true, movementDirection)
 
               def areAllEmpty(iterator: IterableOnce[(BlockPos, BlockState)]): Boolean =
                 iterator.iterator.forall(e => isEmpty(e._1, e._2))
@@ -391,6 +395,50 @@ object RailBlock {
   val POWERED: BooleanProperty = BooleanProperty.create("powered")
 
   val maxRailDistance: Int = 64
+
+  /** Mirror of vanilla `PistonBaseBlock.isPushable`, but with two gates removed so that
+    * the rail can shift block-entity-bearing blocks (chests, furnaces, …) and other
+    * `PushReaction.BLOCK` blocks while preserving their state via
+    * `WorldUtil.setBlockStateWithBlockEntity`:
+    *
+    *   - `PushReaction.BLOCK` is treated as `NORMAL` (allowed)
+    *   - the trailing `!state.hasBlockEntity()` rejection is dropped
+    *
+    * All other gates (build height, world border, obsidian / respawn-anchor /
+    * reinforced-deepslate / crying-obsidian list, hardness `-1` check, piston
+    * self-extension check, `IGNORE` / `DESTROY` / `PUSH_ONLY` handling) are preserved.
+    *
+    * Gated behind `BlockshifterConfig.moveBlockEntities`; the default isMovable path
+    * still defers to `PistonBaseBlock.isPushable`.
+    */
+  def isPushableLenient(state: BlockState, level: Level, pos: BlockPos,
+                        movementDirection: Direction, destroyBlocks: Boolean,
+                        pushDirection: Direction): Boolean = {
+    if (pos.getY < level.getMinBuildHeight || pos.getY > level.getMaxBuildHeight - 1 ||
+        !level.getWorldBorder.isWithinBounds(pos))
+      return false
+    if (state.isAir) return true
+    if (state.is(Blocks.OBSIDIAN) || state.is(Blocks.CRYING_OBSIDIAN) ||
+        state.is(Blocks.RESPAWN_ANCHOR) || state.is(Blocks.REINFORCED_DEEPSLATE))
+      return false
+    if (movementDirection == Direction.DOWN && pos.getY == level.getMinBuildHeight) return false
+    if (movementDirection == Direction.UP && pos.getY == level.getMaxBuildHeight - 1) return false
+
+    if (!state.is(Blocks.PISTON) && !state.is(Blocks.STICKY_PISTON)) {
+      if (state.getDestroySpeed(level, pos) == -1.0F) return false
+      state.getPistonPushReaction match {
+        case PushReaction.BLOCK     => /* lenient: fall through (treat as NORMAL) */
+        case PushReaction.DESTROY   => return destroyBlocks
+        case PushReaction.PUSH_ONLY => return movementDirection == pushDirection
+        case _                      => /* NORMAL / IGNORE: fall through */
+      }
+    } else if (state.getValue[java.lang.Boolean](PistonBaseBlock.EXTENDED)) {
+      return false
+    }
+
+    // Vanilla returns `!state.hasBlockEntity()` here; lenient version always allows.
+    true
+  }
 }
 
 private object BlockshifterModForwardRef {

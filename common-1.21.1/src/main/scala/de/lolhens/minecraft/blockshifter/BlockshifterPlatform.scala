@@ -5,9 +5,12 @@ import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.item.{CreativeModeTab, Item}
 import net.minecraft.world.level.block.Block
 
+import java.nio.file.Path
 import java.util.function.Supplier
 
 trait BlockshifterPlatform {
+  def configDir: Path
+
   def registerBlock[B <: Block](id: String, factory: () => B): Supplier[B]
 
   def registerItem[I <: Item](id: String, factory: () => I): Supplier[I]

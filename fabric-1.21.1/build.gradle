@@ -60,9 +60,15 @@ dependencies {
     // mod-private bridge codegen (ADR-0018) is on by default.
     modImplementation "de.lhns.mcdp:mcdp:${project.mcdp_version}"
 
-    // Scala stdlib goes through mcdp's per-mod loader instead of being shaded into the jar.
-    // The Gradle plugin emits this into META-INF/mcdepprovider.toml.
-    mcdepImplementation "org.scala-lang:scala-library:${project.scala_library_version}"
+    // Scala 3 stdlib + circe go through mcdp's per-mod URLClassLoader at runtime.
+    // The Gradle plugin walks the transitive closure and emits each library into
+    // META-INF/mcdepprovider.toml with SHA-256.
+    mcdepImplementation "org.scala-lang:scala3-library_3:${project.scala3_version}"
+    mcdepImplementation "io.circe:circe-parser_3:${project.circe_version}"
+    mcdepImplementation "io.circe:circe-generic_3:${project.circe_version}"
+    mcdepImplementation "io.circe:circe-generic-extras_3:${project.circe_extras_version}"
+    mcdepImplementation "io.circe:circe-config_3:${project.circe_config_version}"
+    mcdepImplementation "org.typelevel:cats-core_3:${project.cats_version}"
 }
 
 mcdepprovider {

@@ -7,16 +7,20 @@ import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.item.{CreativeModeTab, Item}
 import net.minecraft.world.level.block.Block
 import net.neoforged.bus.api.IEventBus
+import net.neoforged.fml.loading.FMLPaths
 import net.neoforged.neoforge.common.NeoForge
 import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent
 import net.neoforged.neoforge.event.tick.LevelTickEvent
 import net.neoforged.neoforge.registries.RegisterEvent
 
+import java.nio.file.Path
 import java.util.function.Supplier
 import scala.collection.mutable
 
 class NeoForgePlatform(modBus: IEventBus) extends BlockshifterPlatform {
   import NeoForgePlatform._
+
+  override def configDir: Path = FMLPaths.CONFIGDIR.get()
 
   private val pendingBlocks =
     mutable.ArrayBuffer.empty[(String, () => Block, LazyRef[Block])]

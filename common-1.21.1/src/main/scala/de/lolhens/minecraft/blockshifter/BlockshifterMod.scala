@@ -1,6 +1,7 @@
 package de.lolhens.minecraft.blockshifter
 
 import de.lolhens.minecraft.blockshifter.block.RailBlock
+import de.lolhens.minecraft.blockshifter.config.BlockshifterConfig
 import de.lolhens.minecraft.blockshifter.util.EntityMover
 import net.minecraft.core.registries.Registries
 import net.minecraft.resources.{ResourceKey, ResourceLocation}
@@ -22,6 +23,8 @@ object BlockshifterMod {
     ref.get()
   }
 
+  lazy val config: BlockshifterConfig = BlockshifterConfig.loadOrCreate(id)
+
   def init(): Unit = {
     val platform = BlockshifterPlatform.current
 
@@ -35,5 +38,7 @@ object BlockshifterMod {
     platform.addToCreativeTab(redstoneBlocksTab, railItem)
 
     platform.onServerLevelTick(level => EntityMover(level).moveAll())
+
+    config  // force config load (creates the file on first run)
   }
 }
