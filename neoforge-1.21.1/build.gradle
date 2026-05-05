@@ -94,6 +94,10 @@ mcdepprovider {
     bridges {
         bridgePackage.set('de.lolhens.minecraft.blockshifter.neoforge.mcdp_bridges')
     }
+    // See fabric-1.21.1/build.gradle for rationale: forces parent-first loading of the
+    // mixin package so `entity.asInstanceOf[BlockEntityAccessor]` in WorldUtil resolves
+    // to the same Class object Mixin merged into vanilla BlockEntity.
+    sharedPackages.add('de.lolhens.minecraft.blockshifter.mixin.')
 }
 
 sourceSets {

@@ -80,6 +80,14 @@ mcdepprovider {
     bridges {
         bridgePackage.set('de.lolhens.minecraft.blockshifter.fabric.mcdp_bridges')
     }
+    // Mixin (game-layer) merges `BlockEntityAccessor` into vanilla `BlockEntity` at boot.
+    // The mod's per-mod URLClassLoader has its OWN copy of the same FQN — `asInstanceOf`
+    // would resolve against the mod loader and fail with ClassCastException because the
+    // two Class objects (game-layer's and mod's) are not the same type. Marking the mixin
+    // package shared makes the mod loader delegate parent-first, so both sides see the
+    // single class Mixin merged into BlockEntity. Safe here: every type under
+    // `…blockshifter.mixin.` is itself a mixin (target / accessor / injector).
+    sharedPackages.add('de.lolhens.minecraft.blockshifter.mixin.')
 }
 
 sourceSets {
