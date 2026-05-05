@@ -1,18 +1,7 @@
-// Shared root plugin classloader for the 1.21.1 subprojects. Declaring fabric-loom and
-// de.lhns.mcdp here with `apply false` puts them on the root classloader so :1.21.1:fabric
-// and :1.21.1:neoforge see the same plugin instance. Without this, loom's RemapJarTask
-// task-create blows up with `cannot cast BuildSharedServiceManager$Inject to
-// BuildSharedServiceManager`, and mcdp's per-subproject state diverges.
-//
-// Plugin versions:
-//  - fabric-loom: pinned here (1.7-SNAPSHOT).
-//  - de.lhns.mcdp: version pinned in settings.gradle's pluginManagement.plugins {} block
-//    (Gradle's plugins{} doesn't accept ${...} interpolation in version strings).
-plugins {
-    id 'idea'
-    id 'fabric-loom' version '1.7-SNAPSHOT' apply false
-    id 'de.lhns.mcdp' apply false
-}
+// Legacy root build file — used by the default ./gradlew (Gradle 7.3.1) for the 1.15.2-1.18
+// modules. The 1.21.1 modules use build-1.21.1.gradle via ./gradlew-1.21.1.
+
+apply plugin: 'idea'
 
 version = project.mod_version
 group = project.maven_group

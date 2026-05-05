@@ -1,0 +1,50 @@
+plugins {
+    id 'net.neoforged.moddev' version '2.0.91'
+    id 'java'
+    id 'scala'
+    id 'idea'
+}
+
+archivesBaseName = rootProject.archives_base_name
+version = rootProject.version + "+common-${project.minecraft_version}"
+group = rootProject.group
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(21)
+    withSourcesJar()
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 21
+}
+
+tasks.withType(ScalaCompile).configureEach {
+    scalaCompileOptions.encoding = 'UTF-8'
+    scalaCompileOptions.additionalParameters = ['-release', '21']
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        name = 'NeoForged'
+        url = 'https://maven.neoforged.net/releases'
+    }
+    maven {
+        name = 'ParchmentMC'
+        url = 'https://maven.parchmentmc.org'
+    }
+}
+
+neoForge {
+    neoFormVersion = project.neo_form_version
+    parchment {
+        minecraftVersion = project.parchment_minecraft
+        mappingsVersion = project.parchment_version
+    }
+}
+
+dependencies {
+    compileOnly "org.scala-lang:scala-library:${project.scala_library_version}"
+    compileOnly "org.spongepowered:mixin:0.8.5"
+}

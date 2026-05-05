@@ -1,0 +1,97 @@
+// fabric-loom and de.lhns.mcdp come from build-1.21.1.gradle's plugins{} block (with
+// `apply false`) so the plugin classloader is shared with :neoforge-1.21.1.
+apply plugin: 'fabric-loom'
+apply plugin: 'de.lhns.mcdp'
+apply plugin: 'java'
+apply plugin: 'scala'
+apply plugin: 'idea'
+
+archivesBaseName = rootProject.archives_base_name
+version = rootProject.version + "+fabric-${project.minecraft_version}"
+group = rootProject.group
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(21)
+    withSourcesJar()
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 21
+}
+
+tasks.withType(ScalaCompile).configureEach {
+    scalaCompileOptions.encoding = 'UTF-8'
+    scalaCompileOptions.additionalParameters = ['-release', '21']
+}
+
+def commonProject = project(':common-1.21.1')
+
+repositories {
+    mavenCentral()
+    maven {
+        name = 'FabricMC'
+        url = 'https://maven.fabricmc.net/'
+    }
+    maven {
+        name = 'ParchmentMC'
+        url = 'https://maven.parchmentmc.org'
+    }
+    // mcdp (`de.lhns.mcdp:mcdp`) — release versions live on Maven Central, SNAPSHOTs on
+    // the Sonatype Central Portal snapshots repo.
+    maven {
+        name = 'sonatype-central-snapshots'
+        url = 'https://central.sonatype.com/repository/maven-snapshots/'
+    }
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings loom.layered {
+        officialMojangMappings()
+        parchment("org.parchmentmc.data:parchment-${project.parchment_minecraft}:${project.parchment_version}@zip")
+    }
+    modImplementation "net.fabricmc:fabric-loader:${project.fabric_loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+    // mcdp unified runtime adapter (ADR-0016) — single jar bundles both Fabric and NeoForge
+    // adapters. Provides the `mcdepprovider` LanguageAdapter referenced in fabric.mod.json
+    // and the per-mod URLClassLoader that serves scala-library at runtime. Auto Mixin →
+    // mod-private bridge codegen (ADR-0018) is on by default.
+    modImplementation "de.lhns.mcdp:mcdp:${project.mcdp_version}"
+
+    // Scala stdlib goes through mcdp's per-mod loader instead of being shaded into the jar.
+    // The Gradle plugin emits this into META-INF/mcdepprovider.toml.
+    mcdepImplementation "org.scala-lang:scala-library:${project.scala_library_version}"
+}
+
+mcdepprovider {
+    lang.set('scala')
+    // Override the auto-derived bridge package: mcdp's default builds it as
+    //   <group>.<projectName.replace('-','_')>.mcdp_mixin_bridges
+    // For projectName "fabric-1.21.1" the dots in the MC version turn segments into
+    // non-identifier tokens. Pin a valid identifier explicitly.
+    bridges {
+        bridgePackage.set('de.lolhens.minecraft.blockshifter.fabric.mcdp_bridges')
+    }
+}
+
+sourceSets {
+    main {
+        scala.srcDirs += commonProject.file('src/main/scala')
+        resources.srcDirs += commonProject.file('src/main/resources')
+    }
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('fabric.mod.json') {
+        expand version: project.version
+    }
+}
+
+loom {
+    mixin {
+        defaultRefmapName = 'blockshifter.refmap.json'
+    }
+}
