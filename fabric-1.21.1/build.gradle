@@ -28,6 +28,10 @@ tasks.withType(ScalaCompile).configureEach {
 def commonProject = project(':common-1.21.1')
 
 repositories {
+    // mavenLocal FIRST: this branch tests a locally published mcdp build. Listed after
+    // the remote repos it loses resolution and silently builds against the last
+    // published snapshot instead of the tree under test.
+    mavenLocal()
     mavenCentral()
     maven {
         name = 'FabricMC'
@@ -37,7 +41,7 @@ repositories {
         name = 'ParchmentMC'
         url = 'https://maven.parchmentmc.org'
     }
-    // mcdp (`de.lhns.mcdp:mcdp`) — release versions live on Maven Central, SNAPSHOTs on
+    // mcdp (`de.lhns.mcdp:mcdp-1.21`) — release versions live on Maven Central, SNAPSHOTs on
     // the Sonatype Central Portal snapshots repo.
     maven {
         name = 'sonatype-central-snapshots'
@@ -58,7 +62,7 @@ dependencies {
     // adapters. Provides the `mcdepprovider` LanguageAdapter referenced in fabric.mod.json
     // and the per-mod URLClassLoader that serves scala-library at runtime. Auto Mixin →
     // mod-private bridge codegen (ADR-0018) is on by default.
-    modImplementation "de.lhns.mcdp:mcdp:${project.mcdp_version}"
+    modImplementation "de.lhns.mcdp:mcdp-1.21:${project.mcdp_version}"
 
     // Scala 3 stdlib + circe go through mcdp's per-mod URLClassLoader at runtime.
     // The Gradle plugin walks the transitive closure and emits each library into

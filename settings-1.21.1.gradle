@@ -7,9 +7,13 @@
 // mcdp (MC Dependency Provider) is consumed from Maven Central / Sonatype Central Portal
 // snapshots — no sibling checkout / composite-include needed. The Gradle plugin
 // (`de.lhns.mcdp`) is resolved via pluginManagement; the runtime artifact
-// (`de.lhns.mcdp:mcdp`) is added per-subproject in {fabric,neoforge}-1.21.1/build.gradle.
+// (`de.lhns.mcdp:mcdp-1.21`) is added per-subproject in {fabric,neoforge}-1.21.1/build.gradle.
 pluginManagement {
     repositories {
+        // mavenLocal FIRST: this branch tests a locally published mcdp build. Listed after
+        // the remote repos it loses resolution and silently builds against the last
+        // published snapshot instead of the tree under test.
+        mavenLocal()
         gradlePluginPortal()
         maven {
             name = 'FabricMC'

@@ -30,6 +30,10 @@ tasks.withType(ScalaCompile).configureEach {
 def commonProject = project(':common-1.21.1')
 
 repositories {
+    // mavenLocal FIRST: this branch tests a locally published mcdp build. Listed after
+    // the remote repos it loses resolution and silently builds against the last
+    // published snapshot instead of the tree under test.
+    mavenLocal()
     mavenCentral()
     maven {
         name = 'NeoForged'
@@ -39,7 +43,7 @@ repositories {
         name = 'ParchmentMC'
         url = 'https://maven.parchmentmc.org'
     }
-    // mcdp (`de.lhns.mcdp:mcdp`) — release versions live on Maven Central, SNAPSHOTs on
+    // mcdp (`de.lhns.mcdp:mcdp-1.21`) — release versions live on Maven Central, SNAPSHOTs on
     // the Sonatype Central Portal snapshots repo.
     maven {
         name = 'sonatype-central-snapshots'
@@ -77,7 +81,7 @@ dependencies {
     // adapters. Discovers @Mod-annotated classes via ModFileScanData.getAnnotatedBy(Mod.class)
     // like vanilla javafml, and FML's bag-based ctor dispatch (ADR-0017) accepts (), (IEventBus),
     // (ModContainer), or any subset/superset of [IEventBus, ModContainer, Dist].
-    implementation "de.lhns.mcdp:mcdp:${project.mcdp_version}"
+    implementation "de.lhns.mcdp:mcdp-1.21:${project.mcdp_version}"
 
     // Scala 3 stdlib + circe go through mcdp's per-mod URLClassLoader at runtime.
     mcdepImplementation "org.scala-lang:scala3-library_3:${project.scala3_version}"
