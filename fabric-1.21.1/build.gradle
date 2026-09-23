@@ -28,10 +28,6 @@ tasks.withType(ScalaCompile).configureEach {
 def commonProject = project(':common-1.21.1')
 
 repositories {
-    // mavenLocal FIRST: this branch tests a locally published mcdp build. Listed after
-    // the remote repos it loses resolution and silently builds against the last
-    // published snapshot instead of the tree under test.
-    mavenLocal()
     mavenCentral()
     maven {
         name = 'FabricMC'
